@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Tuple, List
 
 sys.path.append(str(Path(__file__).parent.parent))
-from rdkit.Chem import Draw, MolFromSmiles
+from rdkit.Chem import Draw, MolFromSmiles, MolFromFASTA
 from mol2chemfigPy3 import mol2chemfig
 import gradio as gr
 import torch
@@ -19,7 +19,11 @@ vocabs = find_vocab()
 models = find_model()
 
 
-def refresh() -> Tuple[List[str], List[str], List[List[str]], List[List[str]]]:
+def refresh(
+    model_selected: str, vocab_selected: str, tokeniser_selected: str
+) -> Tuple[
+    List[str], List[str], List[List[str]], List[List[str]], gr.Dropdown, gr.Dropdown
+]:
     global vocabs, models
     vocabs = find_vocab()
     models = find_model()
@@ -27,7 +31,18 @@ def refresh() -> Tuple[List[str], List[str], List[List[str]], List[List[str]]]:
     b = [i[0] for i in models["base"]]
     c = [[i[0], i[2]] for i in models["standalone"]]
     d = [[i[0], i[2]] for i in models["lora"]]
-    return a, b, c, d
+    e = gr.Dropdown(
+        [i[0] for i in models["base"]] + [i[0] for i in models["standalone"]],
+        value=model_selected,
+        label="model",
+    )
+    f = gr.Dropdown(
+        list(vocabs.keys()),
+        value=vocab_selected,
+        label="vocabulary",
+        visible=tokeniser_selected == "SELFIES",
+    )
+    return a, b, c, d, e, f
 
 
 def dummy(a, b, c, d, e, f, g, h, i, j):
@@ -41,8 +56,7 @@ def dummy(a, b, c, d, e, f, g, h, i, j):
 
 with gr.Blocks(title="ChemBFN WebUI") as app:
     gr.Markdown("### WebUI to generate and visualise molecules for ChemBFN method.")
-    gr.Markdown("Author: Nianze TAO (Omozawa SUENO)")
-    gr.Markdown("---")
+    # gr.Markdown("Author: Nianze TAO (Omozawa SUENO)")
     with gr.Row():
         with gr.Column(scale=1):
             btn = gr.Button("RUN", variant="primary")
@@ -54,7 +68,9 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
                 ["SMILES & SAFE", "SELFIES", "FASTA"], label="tokeniser"
             )
             vocab_fn = gr.Dropdown(
-                list(vocabs.keys()), label="vocabulary", visible=token_name == "SELFIES"
+                list(vocabs.keys()),
+                label="vocabulary",
+                visible=token_name.value == "SELFIES",
             )
             step = gr.Slider(1, 5000, 100, step=1, label="step")
             batch_size = gr.Slider(1, 512, 1, step=1, label="batch size")
@@ -92,38 +108,43 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
                 img = gr.Gallery(label="molecule", columns=4, height=512)
             with gr.Tab(label="model explorer"):
                 btn_refresh = gr.Button("refresh", variant="secondary")
-                vocab_table = gr.Dataframe(
-                    list(vocabs.keys()),
-                    headers=["name"],
-                    col_count=(1, "fixed"),
-                    label="vocabulary files",
-                    interactive=False,
-                    show_row_numbers=True,
-                )
-                base_table = gr.Dataframe(
-                    [i[0] for i in models["base"]],
-                    headers=["name"],
-                    col_count=(1, "fixed"),
-                    label="base models",
-                    interactive=False,
-                    show_row_numbers=True,
-                )
-                standalone_table = gr.Dataframe(
-                    [[i[0], i[2]] for i in models["standalone"]],
-                    headers=["name", "objective"],
-                    col_count=(2, "fixed"),
-                    label="standalone models",
-                    interactive=False,
-                    show_row_numbers=True,
-                )
-                lora_tabel = gr.Dataframe(
-                    [[i[0], i[2]] for i in models["lora"]],
-                    headers=["name", "objective"],
-                    col_count=(2, "fixed"),
-                    label="LoRA models",
-                    interactive=False,
-                    show_row_numbers=True,
-                )
+                with gr.Tab(label="customised vocabulary"):
+                    vocab_table = gr.Dataframe(
+                        list(vocabs.keys()),
+                        headers=["name"],
+                        col_count=(1, "fixed"),
+                        label="",
+                        interactive=False,
+                        show_row_numbers=True,
+                    )
+                with gr.Tab(label="base models"):
+                    base_table = gr.Dataframe(
+                        [i[0] for i in models["base"]],
+                        headers=["name"],
+                        col_count=(1, "fixed"),
+                        label="",
+                        interactive=False,
+                        show_row_numbers=True,
+                    )
+                with gr.Tab(label="standalone models"):
+                    standalone_table = gr.Dataframe(
+                        [[i[0], i[2]] for i in models["standalone"]],
+                        headers=["name", "objective"],
+                        col_count=(2, "fixed"),
+                        label="",
+                        interactive=False,
+                        show_row_numbers=True,
+                    )
+                with gr.Tab(label="LoRA models"):
+                    lora_tabel = gr.Dataframe(
+                        [[i[0], i[2]] for i in models["lora"]],
+                        headers=["name", "objective"],
+                        col_count=(2, "fixed"),
+                        label="",
+                        interactive=False,
+                        show_row_numbers=True,
+                    )
+    # ------ user interaction events -------
     btn.click(
         fn=dummy,
         inputs=[
@@ -142,8 +163,15 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
     )
     btn_refresh.click(
         fn=refresh,
-        inputs=None,
-        outputs=[vocab_table, base_table, standalone_table, lora_tabel],
+        inputs=[model_name, vocab_fn, token_name],
+        outputs=[
+            vocab_table,
+            base_table,
+            standalone_table,
+            lora_tabel,
+            model_name,
+            vocab_fn,
+        ],
     )
     token_name.input(
         fn=lambda x, y: gr.Dropdown(

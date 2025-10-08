@@ -39,7 +39,7 @@ def find_model() -> Dict[str, List[List[Union[str, int, List[str], Path]]]]:
             name = config["name"]
             label = config["label"]
             lmax = config["padding_length"]
-            standalone_models.append([name, Path(lora_fn).parent, label, lmax])
+            standalone_models.append([name, Path(standalone_fn).parent, label, lmax])
     models["standalone"] = standalone_models
     # find lora models
     lora_models = []
@@ -60,5 +60,4 @@ def find_model() -> Dict[str, List[List[Union[str, int, List[str], Path]]]]:
 
 
 if __name__ == "__main__":
-    print(find_vocab())
-    print(find_model())
+    ...
