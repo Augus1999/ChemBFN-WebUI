@@ -3,4 +3,3 @@ mol2chemfigPy3>=1.5.11
 gradio>=5.32.1
 torch>=2.7.0
 selfies>=2.2.0
-huggingface-hub
