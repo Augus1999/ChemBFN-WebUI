@@ -7,7 +7,7 @@ import os
 import json
 from glob import glob
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, List, Tuple, Union
 
 _model_path = Path(__file__).parent.parent / "model"
 
@@ -59,16 +59,33 @@ def find_model() -> Dict[str, List[List[Union[str, int, List[str], Path]]]]:
     return models
 
 
+def _get_lora_info(prompt: str) -> Tuple[str, List[float], List[float]]:
+    s = prompt.split(">")
+    s1 = s[0].replace("<", "")
+    lora_info = s1.split(":")
+    lora_name = lora_info[0]
+    if len(lora_info) == 1:
+        lora_scaling = 1.0
+    else:
+        lora_scaling = float(lora_info[1])
+    if len(s) == 1:
+        obj = []
+    elif ":" not in s[1]:
+        obj = []
+    else:
+        s2 = s[1].replace(":", "").replace("[", "").replace("]", "").split(",")
+        obj = [float(i) for i in s2]
+    return lora_name, obj, lora_scaling
+
+
 def parse_prompt(
     prompt: str,
 ) -> Dict[str, Union[List[str], List[float], List[List[float]]]]:
     prompt_group = prompt.strip().replace("\n", "").split(";")
     prompt_group = [i for i in prompt_group if i]
     info = {"lora": [], "objective": [], "lora_scaling": []}
-    print(not (info["lora"] and info["objective"]))
-    print(prompt_group)
     if not prompt_group:
-        return info
+        pass
     if len(prompt_group) == 1:
         if not ("<" in prompt_group[0] and ">" in prompt_group[0]):
             obj = [
@@ -76,15 +93,40 @@ def parse_prompt(
                 for i in prompt_group[0].replace("[", "").replace("]", "").split(",")
             ]
             info["objective"].append(obj)
-            return info
         else:
-            ...
+            lora_name, obj, lora_scaling = _get_lora_info(prompt_group[0])
+            info["lora"].append(lora_name)
+            if obj:
+                info["objective"].append(obj)
+            info["lora_scaling"].append(lora_scaling)
     else:
-        ...
+        for _prompt in prompt_group:
+            if not ("<" in _prompt and ">" in _prompt):
+                continue
+            lora_name, obj, lora_scaling = _get_lora_info(_prompt)
+            info["lora"].append(lora_name)
+            if obj:
+                info["objective"].append(obj)
+            info["lora_scaling"].append(lora_scaling)
+    return info
+
+
+def parse_exclude_token(tokens: str, vocab_keys: List[str]) -> List[str]:
+    tokens = tokens.strip().replace("\n", "").split(",")
+    tokens = [i for i in tokens if i]
+    if not tokens:
+        return tokens
+    tokens = [i for i in vocab_keys if i not in tokens]
+    return tokens
+
+def parse_sar_control(sar_control: str) -> List[bool]:
+    sar_flag = sar_control.strip().replace("\n", "").split(",")
+    sar_flag = [i for i in sar_flag if i]
+    if not sar_flag:
+        return [False]
+    sar_flag = [i.lower() == "t" for i in sar_flag]
+    return sar_flag
 
 
 if __name__ == "__main__":
-    parse_prompt("")
-    print(parse_prompt("[0,0,0]"))
-    parse_prompt(";<n:1:4>;<b:1:5>")
     ...

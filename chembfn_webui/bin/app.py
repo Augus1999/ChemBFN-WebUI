@@ -24,8 +24,14 @@ from bayesianflow_for_chem.data import (
     aa2vec,
     split_selfies,
 )
-from bayesianflow_for_chem.tool import sample, inpaint
-from lib.utilities import find_model, find_vocab, parse_prompt
+from bayesianflow_for_chem.tool import sample, inpaint, adjust_lora_
+from lib.utilities import (
+    find_model,
+    find_vocab,
+    parse_prompt,
+    parse_exclude_token,
+    parse_sar_control,
+)
 
 vocabs = find_vocab()
 models = find_model()
@@ -95,6 +101,8 @@ def run(
     temperature: float,
     prompt: str,
     scaffold: str,
+    sar_control: str,
+    exclude_token: str,
 ) -> Tuple[List, List[str], str, str, str]:
     _message = []
     base_model_dict = dict(models["base"])
@@ -108,13 +116,13 @@ def run(
         vocab_keys = VOCAB_KEYS
         tokeniser = smiles2vec
         trans_fn = lambda x: [i for i in x if (MolFromSmiles(i) and i)]
-        img_fn = lambda x: [Draw.MolToImage(MolFromSmiles(i), (250, 250)) for i in x]
+        img_fn = lambda x: [Draw.MolToImage(MolFromSmiles(i), (500, 500)) for i in x]
         chemfig_fn = lambda x: [mol2chemfig(i, "-r", inline=True) for i in x]
     if token_name == "FASTA":
         vocab_keys = AA_VOCAB_KEYS
         tokeniser = aa2vec
         trans_fn = lambda x: x
-        img_fn = lambda x: [Draw.MolToImage(MolFromFASTA(i), (250, 250)) for i in x]
+        img_fn = lambda x: [Draw.MolToImage(MolFromFASTA(i), (500, 500)) for i in x]
         chemfig_fn = lambda x: ["null" for _ in x]
     if token_name == "SELFIES":
         vocab_data = load_vocab(vocabs[vocab_fn])
@@ -123,12 +131,14 @@ def run(
         tokeniser = partial(selfies2vec, vocab_dict=vocab_dict)
         trans_fn = lambda x: x
         img_fn = lambda x: [
-            Draw.MolToImage(MolFromSmiles(decoder(i)), (250, 250)) for i in x
+            Draw.MolToImage(MolFromSmiles(decoder(i)), (500, 500)) for i in x
         ]
         chemfig_fn = lambda x: [mol2chemfig(decoder(i), "-r", inline=True) for i in x]
     _method = "bfn" if method == "BFN" else f"ode:{temperature}"
     # ------- build model -------
     prompt_info = parse_prompt(prompt)
+    sar_flag = parse_sar_control(sar_control)
+    print(prompt_info)
     if not prompt_info["lora"]:
         if model_name in base_model_dict:
             lmax = sequence_size
@@ -144,6 +154,7 @@ def run(
             if prompt_info["objective"]:
                 if not standalone_label_dict[model_name]:
                     y = None
+                    _message.append("Objective values ignored.")
                 else:
                     mlp = MLP.from_checkpoint(
                         standalone_model_dict[model_name] / "mlp.pt"
@@ -152,10 +163,58 @@ def run(
                     y = mlp.forward(y)
             else:
                 y = None
-            _message.append(f"sequence length is set to {lmax} from model metadata.")
+            _message.append(f"Sequence length is set to {lmax} from model metadata.")
+        bfn.semi_autoregressive = sar_flag[0]
+    elif len(prompt_info["lora"]) == 1:
+        lmax = lora_lmax_dict[prompt_info["lora"][0]]
+        if model_name in base_model_dict:
+            bfn = ChemBFN.from_checkpoint(
+                base_model_dict[model_name],
+                lora_model_dict[prompt_info["lora"][0]] / "lora.pt",
+            )
+        else:
+            bfn = ChemBFN.from_checkpoint(
+                standalone_model_dict[model_name] / "model.pt",
+                lora_model_dict[prompt_info["lora"][0]] / "lora.pt",
+            )
+        if prompt_info["objective"]:
+            if not lora_label_dict[prompt_info["lora"][0]]:
+                y = None
+                _message.append("Objective values ignored.")
+            else:
+                mlp = MLP.from_checkpoint(
+                    lora_model_dict[prompt_info["lora"][0]] / "mlp.pt"
+                )
+                y = torch.tensor([prompt_info["objective"]], dtype=torch.float32)
+                y = mlp.forward(y)
+        else:
+            y = None
+        if prompt_info["lora_scaling"][0] != 1.0:
+            adjust_lora_(bfn, prompt_info["lora_scaling"][0])
+        _message.append(f"Sequence length is set to {lmax} from model metadata.")
+        bfn.semi_autoregressive = sar_flag[0]
     else:
-        ...
+        lmax = max([lora_lmax_dict[i] for i in prompt_info["lora"]])
+        if model_name in base_model_dict:
+            base_model_dir = base_model_dict[model_name]
+        else:
+            base_model_dir = standalone_model_dict[model_name] / "model.pt"
+            lmax = max([lmax, standalone_lmax_dict[model_name]])
+        lora_dir = [lora_model_dict[i] / "lora.pt" for i in prompt_info["lora"]]
+        mlps = [
+            MLP.from_checkpoint(lora_model_dict[i] / "mlp.pt")
+            for i in prompt_info["lora"]
+        ]
+        weights = prompt_info["lora_scaling"]
+        if len(sar_flag) == 1:
+            sar_flag = [sar_flag[0] for _ in range(len(weights))]
+        bfn = EnsembleChemBFN(base_model_dir, lora_dir, mlps, weights)
+        y = [torch.tensor([i], dtype=torch.float32) for i in prompt_info["objective"]]
+        _message.append(f"Sequence length is set to {lmax} from model metadata.")
     # ------- inference -------
+    allowed_tokens = parse_exclude_token(exclude_token, vocab_keys)
+    if not allowed_tokens:
+        allowed_tokens = "all"
     scaffold = scaffold.strip()
     if not scaffold:
         mols = sample(
@@ -167,6 +226,7 @@ def run(
             guidance_strength,
             vocab_keys=vocab_keys,
             method=_method,
+            allowed_tokens=allowed_tokens,
         )
         mols = trans_fn(mols)
         imgs = img_fn(mols)
@@ -176,7 +236,14 @@ def run(
         x = x + [0 for _ in range(lmax - len(x))]
         x = torch.tensor([x], dtype=torch.long).repeat(batch_size, 1)
         mols = inpaint(
-            bfn, x, step, y, guidance_strength, vocab_keys=vocab_keys, method=_method
+            bfn,
+            x,
+            step,
+            y,
+            guidance_strength,
+            vocab_keys=vocab_keys,
+            method=_method,
+            allowed_tokens=allowed_tokens,
         )
         mols = trans_fn(mols)
         imgs = img_fn(mols)
@@ -198,7 +265,6 @@ def run(
 
 with gr.Blocks(title="ChemBFN WebUI") as app:
     gr.Markdown("### WebUI to generate and visualise molecules for ChemBFN method.")
-    # gr.Markdown("Author: Nianze TAO (Omozawa SUENO)")
     with gr.Row():
         with gr.Column(scale=1):
             btn = gr.Button("RUN", variant="primary")
@@ -292,6 +358,13 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
                         interactive=False,
                         show_row_numbers=True,
                     )
+            with gr.Tab(label="advanced control"):
+                sar_control = gr.Textbox("F", label="semi-autoregressive behaviour")
+                gr.Markdown("")
+                exclude_token = gr.TextArea(
+                    label="exclude tokens",
+                    placeholder="key in unwanted tokens separated by comma.",
+                )
     # ------ user interaction events -------
     btn.click(
         fn=run,
@@ -307,6 +380,8 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
             temperature,
             prompt,
             scaffold,
+            sar_control,
+            exclude_token,
         ],
         outputs=[img, result, chemfig, message, btn_download],
     )
