@@ -32,6 +32,7 @@ from lib.utilities import (
     parse_exclude_token,
     parse_sar_control,
 )
+from lib.version import __version__
 
 vocabs = find_vocab()
 models = find_model()
@@ -424,10 +425,15 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
     )
 
 
-if __name__ == "__main__":
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--public", default=False, help="open to public", action="store_true"
     )
+    parser.add_argument("-V", "--version", action="version", version=__version__)
     args = parser.parse_args()
     app.launch(share=args.public)
+
+
+if __name__ == "__main__":
+    main()

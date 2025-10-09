@@ -10,6 +10,8 @@ from pathlib import Path
 from typing import Dict, List, Tuple, Union
 
 _model_path = Path(__file__).parent.parent / "model"
+if "CHEMBFN_WEBUI_MODEL_DIR" in os.environ:
+    _model_path = Path(os.environ["CHEMBFN_WEBUI_MODEL_DIR"])
 
 
 def find_vocab() -> Dict[str, str]:
