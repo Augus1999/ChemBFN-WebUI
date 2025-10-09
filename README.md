@@ -8,10 +8,10 @@
 <img src="image/screenshot_4.jpeg" alt="screenshot 4" width="400" height="auto">
 </p>
 
-### 1. Install dependencies
+### 1. Install
 
 ```bash
-$ pip install -r requirements.txt
+$ pip install -U chembfn_webui
 ```
 
 ### 2. Place model files
@@ -50,9 +50,31 @@ For example,
 
 If placed correctly, all these files can be seen in the "model explorer" tab.
 
+> You can use an external folder to host the models if it follows the same structure as [`chembfn_webui/model`](./chembfn_webui/model). See the next section for the method.
+
 ### 3. Launch the program
 
-Execute [`chembfn_webui/run.bat`](./chembfn_webui/run.bat) or [`chembfn_webui/run.sh`](./chembfn_webui/run.sh) based on your OS.
+I. launch the web-UI
+```bash
+$ chembfn
+```
+
+II. launch the web in a public link
+```bash
+$ chembfn --public
+```
+
+III. use an external directory to hold the model files (Linux and MacOS)
+```bash
+$ export CHEMBFN_WEBUI_MODEL_DIR={YOUR/MODEL/DIR}
+$ chembfn
+```
+
+IV. use an external directory to hold the model files (Windows)
+```bash
+$ set CHEMBFN_WEBUI_MODEL_DIR={YOUR/MODEL/DIR}
+$ chembfn
+```
 
 ### 4. Write the prompt
 
