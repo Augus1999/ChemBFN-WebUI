@@ -30,6 +30,7 @@ from lib.utilities import find_model, find_vocab, parse_prompt
 vocabs = find_vocab()
 models = find_model()
 lora_selected = False  # lora select flag
+cache_dir = Path(__file__).parent.parent / "cache"
 
 
 def selfies2vec(sel: str, vocab_dict: Dict[str, int]) -> List[int]:
@@ -94,7 +95,7 @@ def run(
     temperature: float,
     prompt: str,
     scaffold: str,
-) -> Tuple[List, List[str], str, str]:
+) -> Tuple[List, List[str], str, str, str]:
     _message = []
     base_model_dict = dict(models["base"])
     standalone_model_dict = dict([[i[0], i[1]] for i in models["standalone"]])
@@ -147,7 +148,7 @@ def run(
                     mlp = MLP.from_checkpoint(
                         standalone_model_dict[model_name] / "mlp.pt"
                     )
-                    y = torch.tensor([prompt_info["objective"]])
+                    y = torch.tensor([prompt_info["objective"]], dtype=torch.float32)
                     y = mlp.forward(y)
             else:
                 y = None
@@ -171,9 +172,28 @@ def run(
         imgs = img_fn(mols)
         chemfigs = chemfig_fn(mols)
     else:
-        ...
-    # TODO
-    return imgs, mols, "\n\n".join(chemfigs), "\n".join(_message)
+        x = [1] + tokeniser(scaffold)
+        x = x + [0 for _ in range(lmax - len(x))]
+        x = torch.tensor([x], dtype=torch.long).repeat(batch_size, 1)
+        mols = inpaint(
+            bfn, x, step, y, guidance_strength, vocab_keys=vocab_keys, method=_method
+        )
+        mols = trans_fn(mols)
+        imgs = img_fn(mols)
+        chemfigs = chemfig_fn(mols)
+    n_mol = len(mols)
+    with open(cache_dir / "results.csv", "w", encoding="utf-8", newline="") as rf:
+        rf.write("\n".join(mols))
+    _message.append(
+        f"{n_mol} smaples generated and saved to cache that can be downloaded."
+    )
+    return (
+        imgs,
+        mols,
+        "\n\n".join(chemfigs),
+        "\n".join(_message),
+        str(cache_dir / "results.csv"),
+    )
 
 
 with gr.Blocks(title="ChemBFN WebUI") as app:
@@ -219,6 +239,7 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
                 message = gr.TextArea(label="message")
             with gr.Tab(label="result viewer"):
                 with gr.Tab(label="result"):
+                    btn_download = gr.File(label="download", visible=False)
                     result = gr.Dataframe(
                         headers=["molecule"],
                         col_count=(1, "fixed"),
@@ -287,7 +308,7 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
             prompt,
             scaffold,
         ],
-        outputs=[img, result, chemfig, message],
+        outputs=[img, result, chemfig, message, btn_download],
     )
     btn_refresh.click(
         fn=refresh,
@@ -321,6 +342,11 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
         outputs=temperature,
     )
     lora_tabel.select(fn=select_lora, inputs=prompt, outputs=prompt)
+    result.change(
+        fn=lambda x: gr.File(x, label="download", visible=True),
+        inputs=btn_download,
+        outputs=btn_download,
+    )
 
 
 if __name__ == "__main__":
