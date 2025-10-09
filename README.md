@@ -59,7 +59,7 @@ Execute [`chembfn_webui/run.bat`](./chembfn_webui/run.bat) or [`chembfn_webui/ru
 * Leave prompt blank for unconditional generation.
 * For standalone models, key in objective values in the format of `[a,b,c,...]` to pass the values to the model.
 * Key in `<name:A>` or `<name:A>:[a,b,c,...]` to select LoRA parameter and pass the objective values if necessary, where `name` is the LoRA model name and `A` is the LoRA scaling. You can easily select a LoRA model by clicking the model name in "LoRA models" tab as well.
-* You can stack several LoRA models together to form an ensemble model by prompt like `<name1:A1>:[a1,b1,c1,...];<name2:A2>;[a2,b2,...];...`. Note that here `A1`, `A2`, _etc_ are contributions of each model to the ensemble.
+* You can stack several LoRA models together to form an ensemble model by prompt like `<name1:A1>:[a1,b1,c1,...];<name2:A2>:[a2,b2,...];...`. Note that here `A1`, `A2`, _etc_ are contributions of each model to the ensemble.
 
 ### 5. Advanced control
 
