@@ -59,5 +59,32 @@ def find_model() -> Dict[str, List[List[Union[str, int, List[str], Path]]]]:
     return models
 
 
+def parse_prompt(
+    prompt: str,
+) -> Dict[str, Union[List[str], List[float], List[List[float]]]]:
+    prompt_group = prompt.strip().replace("\n", "").split(";")
+    prompt_group = [i for i in prompt_group if i]
+    info = {"lora": [], "objective": [], "lora_scaling": []}
+    print(not (info["lora"] and info["objective"]))
+    print(prompt_group)
+    if not prompt_group:
+        return info
+    if len(prompt_group) == 1:
+        if not ("<" in prompt_group[0] and ">" in prompt_group[0]):
+            obj = [
+                float(i)
+                for i in prompt_group[0].replace("[", "").replace("]", "").split(",")
+            ]
+            info["objective"].append(obj)
+            return info
+        else:
+            ...
+    else:
+        ...
+
+
 if __name__ == "__main__":
+    parse_prompt("")
+    print(parse_prompt("[0,0,0]"))
+    parse_prompt(";<n:1:4>;<b:1:5>")
     ...

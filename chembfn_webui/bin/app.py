@@ -6,17 +6,40 @@ Define application behaviours.
 import sys
 import argparse
 from pathlib import Path
-from typing import Tuple, List
+from functools import partial
+from typing import Tuple, List, Dict
 
 sys.path.append(str(Path(__file__).parent.parent))
 from rdkit.Chem import Draw, MolFromSmiles, MolFromFASTA
 from mol2chemfigPy3 import mol2chemfig
 import gradio as gr
 import torch
-from lib.utilities import find_model, find_vocab
+from selfies import decoder
+from bayesianflow_for_chem import ChemBFN, MLP, EnsembleChemBFN
+from bayesianflow_for_chem.data import (
+    VOCAB_KEYS,
+    AA_VOCAB_KEYS,
+    load_vocab,
+    smiles2vec,
+    aa2vec,
+    split_selfies,
+)
+from bayesianflow_for_chem.tool import sample, inpaint
+from lib.utilities import find_model, find_vocab, parse_prompt
 
 vocabs = find_vocab()
 models = find_model()
+lora_selected = False  # lora select flag
+
+
+def selfies2vec(sel: str, vocab_dict: Dict[str, int]) -> List[int]:
+    s = split_selfies(sel)
+    unknown_id = None
+    for key, idx in vocab_dict.items():
+        if "unknown" in key.lower():
+            unknown_id = idx
+            break
+    return [vocab_dict.get(i, default=unknown_id) for i in s]
 
 
 def refresh(
@@ -45,13 +68,112 @@ def refresh(
     return a, b, c, d, e, f
 
 
-def dummy(a, b, c, d, e, f, g, h, i, j):
-    smi = "c1ccc(OCCC#N)cc1O"
-    smis = [smi] * e
-    img = [Draw.MolToImage(MolFromSmiles(i)) for i in smis]
-    # chemfig_ = [f"```latex\n{mol2chemfig(i, "-r", inline=True)}\n```" for i in smis]
-    chemfig_ = "\n\n".join([mol2chemfig(i, "-r", inline=True) for i in smis])
-    return img, smis, chemfig_, "message!"
+def select_lora(evt: gr.SelectData, prompt: str) -> str:
+    global lora_selected
+    if lora_selected:  # avoid double select
+        lora_selected = False
+        return prompt
+    selected_lora = evt.value
+    lora_selected = True
+    if evt.index[1] != 0:
+        return prompt
+    if not prompt:
+        return f"<{selected_lora}:1>"
+    return f"{prompt};\n<{selected_lora}:1>"
+
+
+def run(
+    model_name: str,
+    token_name: str,
+    vocab_fn: str,
+    step: int,
+    batch_size: int,
+    sequence_size: int,
+    guidance_strength: float,
+    method: str,
+    temperature: float,
+    prompt: str,
+    scaffold: str,
+) -> Tuple[List, List[str], str, str]:
+    _message = []
+    base_model_dict = dict(models["base"])
+    standalone_model_dict = dict([[i[0], i[1]] for i in models["standalone"]])
+    lora_model_dict = dict([[i[0], i[1]] for i in models["lora"]])
+    standalone_label_dict = dict([[i[0], i[2] != []] for i in models["standalone"]])
+    lora_label_dict = dict([[i[0], i[2] != []] for i in models["lora"]])
+    standalone_lmax_dict = dict([[i[0], i[3]] for i in models["standalone"]])
+    lora_lmax_dict = dict([[i[0], i[3]] for i in models["lora"]])
+    if token_name == "SMILES & SAFE":
+        vocab_keys = VOCAB_KEYS
+        tokeniser = smiles2vec
+        trans_fn = lambda x: [i for i in x if (MolFromSmiles(i) and i)]
+        img_fn = lambda x: [Draw.MolToImage(MolFromSmiles(i), (250, 250)) for i in x]
+        chemfig_fn = lambda x: [mol2chemfig(i, "-r", inline=True) for i in x]
+    if token_name == "FASTA":
+        vocab_keys = AA_VOCAB_KEYS
+        tokeniser = aa2vec
+        trans_fn = lambda x: x
+        img_fn = lambda x: [Draw.MolToImage(MolFromFASTA(i), (250, 250)) for i in x]
+        chemfig_fn = lambda x: ["null" for _ in x]
+    if token_name == "SELFIES":
+        vocab_data = load_vocab(vocabs[vocab_fn])
+        vocab_keys = vocab_data["vocab_keys"]
+        vocab_dict = vocab_data["vocab_dict"]
+        tokeniser = partial(selfies2vec, vocab_dict=vocab_dict)
+        trans_fn = lambda x: x
+        img_fn = lambda x: [
+            Draw.MolToImage(MolFromSmiles(decoder(i)), (250, 250)) for i in x
+        ]
+        chemfig_fn = lambda x: [mol2chemfig(decoder(i), "-r", inline=True) for i in x]
+    _method = "bfn" if method == "BFN" else f"ode:{temperature}"
+    # ------- build model -------
+    prompt_info = parse_prompt(prompt)
+    if not prompt_info["lora"]:
+        if model_name in base_model_dict:
+            lmax = sequence_size
+            bfn = ChemBFN.from_checkpoint(base_model_dict[model_name])
+            y = None
+            if prompt_info["objective"]:
+                _message.append("Objective values ignored by base model.")
+        else:
+            lmax = standalone_lmax_dict[model_name]
+            bfn = ChemBFN.from_checkpoint(
+                standalone_model_dict[model_name] / "model.pt"
+            )
+            if prompt_info["objective"]:
+                if not standalone_label_dict[model_name]:
+                    y = None
+                else:
+                    mlp = MLP.from_checkpoint(
+                        standalone_model_dict[model_name] / "mlp.pt"
+                    )
+                    y = torch.tensor([prompt_info["objective"]])
+                    y = mlp.forward(y)
+            else:
+                y = None
+            _message.append(f"sequence length is set to {lmax} from model metadata.")
+    else:
+        ...
+    # ------- inference -------
+    scaffold = scaffold.strip()
+    if not scaffold:
+        mols = sample(
+            bfn,
+            batch_size,
+            lmax,
+            step,
+            y,
+            guidance_strength,
+            vocab_keys=vocab_keys,
+            method=_method,
+        )
+        mols = trans_fn(mols)
+        imgs = img_fn(mols)
+        chemfigs = chemfig_fn(mols)
+    else:
+        ...
+    # TODO
+    return imgs, mols, "\n\n".join(chemfigs), "\n".join(_message)
 
 
 with gr.Blocks(title="ChemBFN WebUI") as app:
@@ -72,9 +194,14 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
                 label="vocabulary",
                 visible=token_name.value == "SELFIES",
             )
-            step = gr.Slider(1, 5000, 100, step=1, label="step")
-            batch_size = gr.Slider(1, 512, 1, step=1, label="batch size")
-            sequence_size = gr.Slider(5, 4096, None, step=1, label="sequence length")
+            step = gr.Slider(1, 5000, 100, step=1, precision=0, label="step")
+            batch_size = gr.Slider(1, 512, 1, step=1, precision=0, label="batch size")
+            sequence_size = gr.Slider(
+                5, 4096, 50, step=1, precision=0, label="sequence length"
+            )
+            guidance_strength = gr.Slider(
+                0, 25, 4, step=0.05, label="guidance strength"
+            )
             method = gr.Dropdown(["BFN", "ODE"], label="method")
             temperature = gr.Slider(
                 0.0,
@@ -146,7 +273,7 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
                     )
     # ------ user interaction events -------
     btn.click(
-        fn=dummy,
+        fn=run,
         inputs=[
             model_name,
             token_name,
@@ -154,6 +281,7 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
             step,
             batch_size,
             sequence_size,
+            guidance_strength,
             method,
             temperature,
             prompt,
@@ -192,6 +320,7 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
         inputs=[method, temperature],
         outputs=temperature,
     )
+    lora_tabel.select(fn=select_lora, inputs=prompt, outputs=prompt)
 
 
 if __name__ == "__main__":
