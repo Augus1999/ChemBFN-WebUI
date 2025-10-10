@@ -93,3 +93,10 @@ Under "advanced control" tab
 ### 6. Generate molecules
 
 Click "RUN" then here you go! If error occured, please check your prompts and settings.
+
+## Where to obtain the models?
+
+* Pretrained models: [https://huggingface.co/suenoomozawa/ChemBFN](https://huggingface.co/suenoomozawa/ChemBFN)
+* ChemBFN source code: [https://github.com/Augus1999/bayesian-flow-network-for-chemistry](https://github.com/Augus1999/bayesian-flow-network-for-chemistry)
+* ChemBFN document: [https://augus1999.github.io/bayesian-flow-network-for-chemistry/](https://augus1999.github.io/bayesian-flow-network-for-chemistry/)
+* ChemBFN package: [https://pypi.org/project/bayesianflow-for-chem/](https://pypi.org/project/bayesianflow-for-chem/)
