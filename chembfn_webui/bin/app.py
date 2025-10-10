@@ -41,6 +41,16 @@ cache_dir = Path(__file__).parent.parent / "cache"
 
 
 def selfies2vec(sel: str, vocab_dict: Dict[str, int]) -> List[int]:
+    """
+    Tokeniser SELFIES string.
+
+    :param sel: SELFIES string
+    :param vocab_dict: vocabulary dictionary
+    :type sel: str
+    :type vocab_dict: dict
+    :return: a list of token indices
+    :rtype: list
+    """
     s = split_selfies(sel)
     unknown_id = None
     for key, idx in vocab_dict.items():
@@ -55,6 +65,23 @@ def refresh(
 ) -> Tuple[
     List[str], List[str], List[List[str]], List[List[str]], gr.Dropdown, gr.Dropdown
 ]:
+    """
+    Refresh model file list.
+
+    :param model_selected: the selected model name
+    :param vocab_selected: the selected vocabulary name
+    :param tokeniser_selected: the selected tokeniser name
+    :type model_selected: str
+    :type vocab_selected: str
+    :type tokeniser_selected: str
+    :return: a list of vocabulary names \n
+             a list of base model files \n
+             a list of standalone model files \n
+             a list of LoRA model files \n
+             Gradio Dropdown item \n
+             Gradio Dropdown item \n
+    :rtype: tuple
+    """
     global vocabs, models
     vocabs = find_vocab()
     models = find_model()
@@ -77,6 +104,16 @@ def refresh(
 
 
 def select_lora(evt: gr.SelectData, prompt: str) -> str:
+    """
+    Select LoRA model name from Dataframe object.
+
+    :param evt: `~gradio.SelectData` instance
+    :param prompt: prompt string
+    :type evt: gradio.SelectData
+    :type prompt: str
+    :return: new prompt string
+    :rtype: str
+    """
     global lora_selected
     if lora_selected:  # avoid double select
         lora_selected = False
@@ -105,6 +142,42 @@ def run(
     sar_control: str,
     exclude_token: str,
 ) -> Tuple[List, List[str], str, str, str]:
+    """
+    Run generation or inpainting.
+
+    :param model_name: model name
+    :param token_name: tokeniser name
+    :param vocab_fn: customised vocabulary name
+    :param step: number of sampling steps
+    :param batch_size: batch-size
+    :param sequence_size: maximum sequence length
+    :param guidance_strength: guidance strength of conditioning
+    :param method: `"BFN"` or `"ODE"`
+    :param temperature: sampling temperature while ODE-solver used
+    :param prompt: prompt string
+    :param scaffold: molecular scaffold
+    :param sar_control: semi-autoregressive behaviour flags
+    :param exclude_token: unwanted tokens
+    :type model_name: str
+    :type token_name: str
+    :type vocab_fn: str
+    :type step: int
+    :type batch_size: int
+    :type sequence_size: int
+    :type guidance_strength: float
+    :type method: str
+    :type temperature: float
+    :type prompt: str
+    :type scaffold: str
+    :type sar_control: str
+    :type exclude_token: str
+    :return: list of images \n
+             list of generated molecules \n
+             Chemfig code \n
+             messages \n
+             cache file path
+    :rtype: tuple
+    """
     _message = []
     base_model_dict = dict(models["base"])
     standalone_model_dict = dict([[i[0], i[1]] for i in models["standalone"]])
@@ -113,6 +186,7 @@ def run(
     lora_label_dict = dict([[i[0], i[2] != []] for i in models["lora"]])
     standalone_lmax_dict = dict([[i[0], i[3]] for i in models["standalone"]])
     lora_lmax_dict = dict([[i[0], i[3]] for i in models["lora"]])
+    # ------- build tokeniser -------
     if token_name == "SMILES & SAFE":
         vocab_keys = VOCAB_KEYS
         tokeniser = smiles2vec
@@ -139,7 +213,7 @@ def run(
     # ------- build model -------
     prompt_info = parse_prompt(prompt)
     sar_flag = parse_sar_control(sar_control)
-    print(prompt_info)
+    print(prompt_info)  # show prompt info
     if not prompt_info["lora"]:
         if model_name in base_model_dict:
             lmax = sequence_size
@@ -426,6 +500,12 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
 
 
 def main() -> None:
+    """
+    Main function.
+
+    :return:
+    :rtype: None
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--public", default=False, help="open to public", action="store_true"
