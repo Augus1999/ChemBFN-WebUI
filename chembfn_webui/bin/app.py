@@ -7,10 +7,10 @@ import sys
 import argparse
 from pathlib import Path
 from functools import partial
-from typing import Tuple, List, Dict
+from typing import Tuple, List, Dict, Union
 
 sys.path.append(str(Path(__file__).parent.parent))
-from rdkit.Chem import Draw, MolFromSmiles, MolFromFASTA
+from rdkit.Chem import Draw, MolFromSmiles
 from mol2chemfigPy3 import mol2chemfig
 import gradio as gr
 import torch
@@ -38,6 +38,14 @@ vocabs = find_vocab()
 models = find_model()
 lora_selected = False  # lora select flag
 cache_dir = Path(__file__).parent.parent / "cache"
+
+HTML_STYLE = gr.InputHTMLAttributes(
+    autocapitalize="off",
+    autocorrect="off",
+    spellcheck=False,
+    autocomplete="off",
+    lang="en",
+)
 
 
 def selfies2vec(sel: str, vocab_dict: Dict[str, int]) -> List[int]:
@@ -93,12 +101,14 @@ def refresh(
         [i[0] for i in models["base"]] + [i[0] for i in models["standalone"]],
         value=model_selected,
         label="model",
+        filterable=False,
     )
     f = gr.Dropdown(
         list(vocabs.keys()),
         value=vocab_selected,
         label="vocabulary",
         visible=tokeniser_selected == "SELFIES",
+        filterable=False,
     )
     return a, b, c, d, e, f
 
@@ -127,6 +137,33 @@ def select_lora(evt: gr.SelectData, prompt: str) -> str:
     return f"{prompt};\n<{selected_lora}:1>"
 
 
+def token_name_change_evt(
+    token_name: str, vocab_fn: str
+) -> Tuple[gr.Dropdown, gr.Tab, gr.Tab]:
+    """
+    Define token_name-dropdown item change event.
+
+    :param token_name: tokeniser name
+    :param vocab_fn: customised vocabulary name
+    :type token_name: str
+    :type vocab_fn: str
+    :return: Dropdown item \n
+             Tab item \n
+             Tab item \n
+    :rtype: tuple
+    """
+    a = gr.Dropdown(
+        list(vocabs.keys()),
+        value=vocab_fn,
+        label="vocabulary",
+        visible=token_name == "SELFIES",
+        filterable=False,
+    )
+    b = gr.Tab(label="LATEX Chemfig", visible=token_name != "FASTA")
+    c = gr.Tab(label="gallery", visible=token_name != "FASTA")
+    return a, b, c
+
+
 def run(
     model_name: str,
     token_name: str,
@@ -143,7 +180,7 @@ def run(
     exclude_token: str,
     quantise: str,
     jited: str,
-) -> Tuple[List, List[str], str, str, str]:
+) -> Tuple[Union[List, None], List[str], str, str, str]:
     """
     Run generation or inpainting.
 
@@ -203,8 +240,8 @@ def run(
         vocab_keys = AA_VOCAB_KEYS
         tokeniser = aa2vec
         trans_fn = lambda x: x
-        img_fn = lambda x: [Draw.MolToImage(MolFromFASTA(i), (500, 500)) for i in x]
-        chemfig_fn = lambda x: ["null" for _ in x]
+        img_fn = lambda _: None  # senseless to provide dumb 2D images
+        chemfig_fn = lambda _: [""]  # senseless to provide very long Chemfig code
     if token_name == "SELFIES":
         vocab_data = load_vocab(vocabs[vocab_fn])
         vocab_keys = vocab_data["vocab_keys"]
@@ -364,14 +401,18 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
             model_name = gr.Dropdown(
                 [i[0] for i in models["base"]] + [i[0] for i in models["standalone"]],
                 label="model",
+                filterable=False,
             )
             token_name = gr.Dropdown(
-                ["SMILES & SAFE", "SELFIES", "FASTA"], label="tokeniser"
+                ["SMILES & SAFE", "SELFIES", "FASTA"],
+                label="tokeniser",
+                filterable=False,
             )
             vocab_fn = gr.Dropdown(
                 list(vocabs.keys()),
                 label="vocabulary",
                 visible=token_name.value == "SELFIES",
+                filterable=False,
             )
             step = gr.Slider(1, 5000, 100, step=1, precision=0, label="step")
             batch_size = gr.Slider(1, 512, 1, step=1, precision=0, label="batch size")
@@ -381,7 +422,7 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
             guidance_strength = gr.Slider(
                 0, 25, 4, step=0.05, label="guidance strength"
             )
-            method = gr.Dropdown(["BFN", "ODE"], label="method")
+            method = gr.Dropdown(["BFN", "ODE"], label="method", filterable=False)
             temperature = gr.Slider(
                 0.0,
                 2.5,
@@ -392,8 +433,10 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
             )
         with gr.Column(scale=2):
             with gr.Tab(label="prompt editor"):
-                prompt = gr.TextArea(label="prompt", lines=12)
-                scaffold = gr.Textbox(label="scaffold")
+                prompt = gr.TextArea(
+                    label="prompt", lines=12, html_attributes=HTML_STYLE
+                )
+                scaffold = gr.Textbox(label="scaffold", html_attributes=HTML_STYLE)
                 gr.Markdown("")
                 message = gr.TextArea(label="message")
             with gr.Tab(label="result viewer"):
@@ -407,11 +450,15 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
                         show_row_numbers=True,
                         show_copy_button=True,
                     )
-                with gr.Tab(label="LATEX Chemfig"):
+                with gr.Tab(
+                    label="LATEX Chemfig", visible=token_name.value != "FASTA"
+                ) as code:
                     chemfig = gr.Code(
                         label="", language="latex", show_line_numbers=True
                     )
-            with gr.Tab(label="gallery"):
+            with gr.Tab(
+                label="gallery", visible=token_name.value != "FASTA"
+            ) as gallery:
                 img = gr.Gallery(label="molecule", columns=4, height=512)
             with gr.Tab(label="model explorer"):
                 btn_refresh = gr.Button("refresh", variant="secondary")
@@ -452,11 +499,16 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
                         show_row_numbers=True,
                     )
             with gr.Tab(label="advanced control"):
-                sar_control = gr.Textbox("F", label="semi-autoregressive behaviour")
+                sar_control = gr.Textbox(
+                    "F",
+                    label="semi-autoregressive behaviour",
+                    html_attributes=HTML_STYLE,
+                )
                 gr.Markdown("")
                 exclude_token = gr.TextArea(
                     label="exclude tokens",
                     placeholder="key in unwanted tokens separated by comma.",
+                    html_attributes=HTML_STYLE,
                 )
                 quantise = gr.Radio(["on", "off"], value="off", label="quantisation")
                 jited = gr.Radio(["on", "off"], value="off", label="JIT")
@@ -495,11 +547,9 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
         ],
     )
     token_name.input(
-        fn=lambda x, y: gr.Dropdown(
-            list(vocabs.keys()), value=y, label="vocabulary", visible=x == "SELFIES"
-        ),
+        fn=token_name_change_evt,
         inputs=[token_name, vocab_fn],
-        outputs=vocab_fn,
+        outputs=[vocab_fn, code, gallery],
     )
     method.input(
         fn=lambda x, y: gr.Slider(
