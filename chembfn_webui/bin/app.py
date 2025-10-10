@@ -24,7 +24,7 @@ from bayesianflow_for_chem.data import (
     aa2vec,
     split_selfies,
 )
-from bayesianflow_for_chem.tool import sample, inpaint, adjust_lora_
+from bayesianflow_for_chem.tool import sample, inpaint, adjust_lora_, quantise_model_
 from lib.utilities import (
     find_model,
     find_vocab,
@@ -141,6 +141,8 @@ def run(
     scaffold: str,
     sar_control: str,
     exclude_token: str,
+    quantise: str,
+    jited: str,
 ) -> Tuple[List, List[str], str, str, str]:
     """
     Run generation or inpainting.
@@ -158,6 +160,8 @@ def run(
     :param scaffold: molecular scaffold
     :param sar_control: semi-autoregressive behaviour flags
     :param exclude_token: unwanted tokens
+    :param quantise: `"on"` or `"off"`
+    :param jited: `"on"` or `"off"`
     :type model_name: str
     :type token_name: str
     :type vocab_fn: str
@@ -171,6 +175,8 @@ def run(
     :type scaffold: str
     :type sar_control: str
     :type exclude_token: str
+    :type quantise: str
+    :type jited: str
     :return: list of images \n
              list of generated molecules \n
              Chemfig code \n
@@ -213,7 +219,7 @@ def run(
     # ------- build model -------
     prompt_info = parse_prompt(prompt)
     sar_flag = parse_sar_control(sar_control)
-    print(prompt_info)  # show prompt info
+    print("Prompt summary:", prompt_info)  # show prompt info
     if not prompt_info["lora"]:
         if model_name in base_model_dict:
             lmax = sequence_size
@@ -240,6 +246,10 @@ def run(
                 y = None
             _message.append(f"Sequence length is set to {lmax} from model metadata.")
         bfn.semi_autoregressive = sar_flag[0]
+        if quantise == "on":
+            quantise_model_(bfn)
+        if jited == "on":
+            bfn.compile()
     elif len(prompt_info["lora"]) == 1:
         lmax = lora_lmax_dict[prompt_info["lora"][0]]
         if model_name in base_model_dict:
@@ -268,6 +278,10 @@ def run(
             adjust_lora_(bfn, prompt_info["lora_scaling"][0])
         _message.append(f"Sequence length is set to {lmax} from model metadata.")
         bfn.semi_autoregressive = sar_flag[0]
+        if quantise == "on":
+            quantise_model_(bfn)
+        if jited == "on":
+            bfn.compile()
     else:
         lmax = max([lora_lmax_dict[i] for i in prompt_info["lora"]])
         if model_name in base_model_dict:
@@ -285,6 +299,10 @@ def run(
             sar_flag = [sar_flag[0] for _ in range(len(weights))]
         bfn = EnsembleChemBFN(base_model_dir, lora_dir, mlps, weights)
         y = [torch.tensor([i], dtype=torch.float32) for i in prompt_info["objective"]]
+        if quantise == "on":
+            bfn.quantise()
+        if jited == "on":
+            bfn.compile()
         _message.append(f"Sequence length is set to {lmax} from model metadata.")
     # ------- inference -------
     allowed_tokens = parse_exclude_token(exclude_token, vocab_keys)
@@ -440,6 +458,8 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
                     label="exclude tokens",
                     placeholder="key in unwanted tokens separated by comma.",
                 )
+                quantise = gr.Radio(["on", "off"], value="off", label="quantisation")
+                jited = gr.Radio(["on", "off"], value="off", label="JIT")
     # ------ user interaction events -------
     btn.click(
         fn=run,
@@ -457,6 +477,8 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
             scaffold,
             sar_control,
             exclude_token,
+            quantise,
+            jited,
         ],
         outputs=[img, result, chemfig, message, btn_download],
     )
