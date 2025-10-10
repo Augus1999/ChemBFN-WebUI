@@ -87,7 +87,7 @@ $ chembfn
 
 Under "advanced control" tab
 
-* You can control semi-autoregressive behaviours by key in `F` for switch off SAR, `T` for switch on SAR, and prompt like `F,F,T,...` to individually control the SAR in an ensemble model.
+* You can control semi-autoregressive behaviours by key in `F` for switching off SAR, `T` for switching on SAR, and prompt like `F,F,T,...` to individually control the SAR in an ensemble model.
 * You can add unwanted tokens, e.g., `[Cu],p,[Si]`.
 
 ### 6. Generate molecules
