@@ -584,7 +584,7 @@ def main() -> None:
     )
     parser.add_argument("-V", "--version", action="version", version=__version__)
     args = parser.parse_args()
-    app.launch(share=args.public)
+    app.launch(share=args.public, allowed_paths=[cache_dir.absolute().__str__()])
 
 
 if __name__ == "__main__":
