@@ -65,7 +65,7 @@ def selfies2vec(sel: str, vocab_dict: Dict[str, int]) -> List[int]:
         if "unknown" in key.lower():
             unknown_id = idx
             break
-    return [vocab_dict.get(i, default=unknown_id) for i in s]
+    return [vocab_dict.get(i, unknown_id) for i in s]
 
 
 def refresh(
