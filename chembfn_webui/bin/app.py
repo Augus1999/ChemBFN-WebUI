@@ -24,7 +24,13 @@ from bayesianflow_for_chem.data import (
     aa2vec,
     split_selfies,
 )
-from bayesianflow_for_chem.tool import sample, inpaint, adjust_lora_, quantise_model_
+from bayesianflow_for_chem.tool import (
+    sample,
+    inpaint,
+    optimise,
+    adjust_lora_,
+    quantise_model_,
+)
 from lib.utilities import (
     find_model,
     find_vocab,
@@ -176,11 +182,12 @@ def run(
     temperature: float,
     prompt: str,
     scaffold: str,
+    template: str,
     sar_control: str,
     exclude_token: str,
     quantise: str,
     jited: str,
-) -> Tuple[Union[List, None], List[str], str, str, str]:
+) -> Tuple[Union[List, None], List[str], str, gr.TextArea, str]:
     """
     Run generation or inpainting.
 
@@ -195,6 +202,7 @@ def run(
     :param temperature: sampling temperature while ODE-solver used
     :param prompt: prompt string
     :param scaffold: molecular scaffold
+    :param template: molecular template
     :param sar_control: semi-autoregressive behaviour flags
     :param exclude_token: unwanted tokens
     :param quantise: `"on"` or `"off"`
@@ -210,6 +218,7 @@ def run(
     :type temperature: float
     :type prompt: str
     :type scaffold: str
+    :type template: str
     :type sar_control: str
     :type exclude_token: str
     :type quantise: str
@@ -346,11 +355,33 @@ def run(
     if not allowed_tokens:
         allowed_tokens = "all"
     scaffold = scaffold.strip()
-    if not scaffold:
-        mols = sample(
+    template = template.strip()
+    if scaffold:
+        x = [1] + tokeniser(scaffold)
+        x = x + [0 for _ in range(lmax - len(x))]
+        x = torch.tensor([x], dtype=torch.long).repeat(batch_size, 1)
+        mols = inpaint(
             bfn,
-            batch_size,
-            lmax,
+            x,
+            step,
+            y,
+            guidance_strength,
+            vocab_keys=vocab_keys,
+            method=_method,
+            allowed_tokens=allowed_tokens,
+        )
+        mols = trans_fn(mols)
+        imgs = img_fn(mols)
+        chemfigs = chemfig_fn(mols)
+        if template:
+            _message.append(f"Molecular template {template} ignored.")
+    elif template:
+        x = [1] + tokeniser(scaffold) + [2]
+        x = x + [0 for _ in range(lmax - len(x))]
+        x = torch.tensor([x], dtype=torch.long).repeat(batch_size, 1)
+        mols = optimise(
+            bfn,
+            x,
             step,
             y,
             guidance_strength,
@@ -362,12 +393,10 @@ def run(
         imgs = img_fn(mols)
         chemfigs = chemfig_fn(mols)
     else:
-        x = [1] + tokeniser(scaffold)
-        x = x + [0 for _ in range(lmax - len(x))]
-        x = torch.tensor([x], dtype=torch.long).repeat(batch_size, 1)
-        mols = inpaint(
+        mols = sample(
             bfn,
-            x,
+            batch_size,
+            lmax,
             step,
             y,
             guidance_strength,
@@ -388,7 +417,8 @@ def run(
         imgs,
         mols,
         "\n\n".join(chemfigs),
-        "\n".join(_message),
+        # "\n".join(_message),
+        gr.TextArea("\n".join(_message), label="message", lines=len(_message)),
         str(cache_dir / "results.csv"),
     )
 
@@ -437,8 +467,9 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
                     label="prompt", lines=12, html_attributes=HTML_STYLE
                 )
                 scaffold = gr.Textbox(label="scaffold", html_attributes=HTML_STYLE)
+                template = gr.Textbox(label="template", html_attributes=HTML_STYLE)
                 gr.Markdown("")
-                message = gr.TextArea(label="message")
+                message = gr.TextArea(label="message", lines=2)
             with gr.Tab(label="result viewer"):
                 with gr.Tab(label="result"):
                     btn_download = gr.File(label="download", visible=False)
@@ -527,6 +558,7 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
             temperature,
             prompt,
             scaffold,
+            template,
             sar_control,
             exclude_token,
             quantise,
