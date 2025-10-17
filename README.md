@@ -48,6 +48,21 @@ For example,
             └───moses_selfies_vocab.txt
 ```
 
+> [!NOTE]
+>
+> >The file `config.json` is automatically saved by CLI tool `Madmol` provided in `bayesianflow-for-chem` package. If you train models via Python API, you need to manually create that file for your models by filling in the tempate:
+> >```json
+> >{
+> >    "padding_index": 0,
+> >    "start_index": 1,
+> >    "end_index": 2,
+> >    "padding_strategy": "static",
+> >    "padding_length": PADDING_LENGTH,
+> >    "label": [LABEL_NAME_I, LABEL_NAME_II, ...],
+> >    "name": JOB_NAME
+> >}
+> >```
+
 If placed correctly, all these files can be seen in the "model explorer" tab.
 
 > You can use an external folder to host the models if it follows the same structure as [`chembfn_webui/model`](./chembfn_webui/model). See the next section for the method.

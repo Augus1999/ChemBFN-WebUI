@@ -35,6 +35,7 @@ long_description = long_description.replace(
     r"(./chembfn_webui/",
     r"(https://github.com/Augus1999/ChemBFN-WebUI/tree/main/chembfn_webui/",
 )
+long_description = long_description.replace(r"> [!NOTE]", r"> Note:")
 
 setup(
     name="chembfn_webui",
