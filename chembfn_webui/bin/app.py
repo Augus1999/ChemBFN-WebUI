@@ -10,7 +10,7 @@ from functools import partial
 from typing import Tuple, List, Dict, Union
 
 sys.path.append(str(Path(__file__).parent.parent))
-from rdkit.Chem import Draw, MolFromSmiles
+from rdkit.Chem import Draw, MolFromSmiles  # type: ignore
 from mol2chemfigPy3 import mol2chemfig
 import gradio as gr
 import torch
@@ -18,10 +18,10 @@ from selfies import decoder
 from bayesianflow_for_chem import ChemBFN, MLP, EnsembleChemBFN
 from bayesianflow_for_chem.data import (
     VOCAB_KEYS,
-    AA_VOCAB_KEYS,
+    FASTA_VOCAB_KEYS,
     load_vocab,
     smiles2vec,
-    aa2vec,
+    fasta2vec,
     split_selfies,
 )
 from bayesianflow_for_chem.tool import (
@@ -246,8 +246,8 @@ def run(
         img_fn = lambda x: [Draw.MolToImage(MolFromSmiles(i), (500, 500)) for i in x]
         chemfig_fn = lambda x: [mol2chemfig(i, "-r", inline=True) for i in x]
     if token_name == "FASTA":
-        vocab_keys = AA_VOCAB_KEYS
-        tokeniser = aa2vec
+        vocab_keys = FASTA_VOCAB_KEYS
+        tokeniser = fasta2vec
         trans_fn = lambda x: x
         img_fn = lambda _: None  # senseless to provide dumb 2D images
         chemfig_fn = lambda _: [""]  # senseless to provide very long Chemfig code
@@ -417,7 +417,6 @@ def run(
         imgs,
         mols,
         "\n\n".join(chemfigs),
-        # "\n".join(_message),
         gr.TextArea("\n".join(_message), label="message", lines=len(_message)),
         str(cache_dir / "results.csv"),
     )
@@ -610,7 +609,12 @@ def main() -> None:
     :return:
     :rtype: None
     """
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        description="A web-based visualisation tool for ChemBFN method.",
+        epilog=f"ChemBFN WebUI {__version__}, developed in Hiroshima University by chemists for chemists. "
+        "Visit https://augus1999.github.io/bayesian-flow-network-for-chemistry/ for more details.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     parser.add_argument(
         "--public", default=False, help="open to public", action="store_true"
     )
