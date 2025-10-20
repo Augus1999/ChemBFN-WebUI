@@ -7,7 +7,7 @@ import sys
 import argparse
 from pathlib import Path
 from functools import partial
-from typing import Tuple, List, Dict, Union
+from typing import Tuple, List, Dict, Union, Literal
 
 sys.path.append(str(Path(__file__).parent.parent))
 from rdkit.Chem import Draw, MolFromSmiles  # type: ignore
@@ -43,6 +43,7 @@ from lib.version import __version__
 vocabs = find_vocab()
 models = find_model()
 cache_dir = Path(__file__).parent.parent / "cache"
+_result_count = 0
 
 HTML_STYLE = gr.InputHTMLAttributes(
     autocapitalize="off",
@@ -173,15 +174,16 @@ def run(
     batch_size: int,
     sequence_size: int,
     guidance_strength: float,
-    method: str,
+    method: Literal["BFN", "ODE"],
     temperature: float,
     prompt: str,
     scaffold: str,
     template: str,
     sar_control: str,
     exclude_token: str,
-    quantise: str,
-    jited: str,
+    quantise: Literal["on", "off"],
+    jited: Literal["on", "off"],
+    sorted_: Literal["on", "off"],
 ) -> Tuple[Union[List, None], List[str], str, gr.TextArea, str]:
     """
     Run generation or inpainting.
@@ -202,6 +204,7 @@ def run(
     :param exclude_token: unwanted tokens
     :param quantise: `"on"` or `"off"`
     :param jited: `"on"` or `"off"`
+    :param sorted\\_: whether to sort the reulst; `"on"` or `"off"`
     :type model_name: str
     :type token_name: str
     :type vocab_fn: str
@@ -218,6 +221,7 @@ def run(
     :type exclude_token: str
     :type quantise: str
     :type jited: str
+    :type sorted\\_: str
     :return: list of images \n
              list of generated molecules \n
              Chemfig code \n
@@ -243,7 +247,7 @@ def run(
     if token_name == "FASTA":
         vocab_keys = FASTA_VOCAB_KEYS
         tokeniser = fasta2vec
-        trans_fn = lambda x: x
+        trans_fn = lambda x: [i for i in x if i]
         img_fn = lambda _: None  # senseless to provide dumb 2D images
         chemfig_fn = lambda _: [""]  # senseless to provide very long Chemfig code
     if token_name == "SELFIES":
@@ -251,7 +255,7 @@ def run(
         vocab_keys = vocab_data["vocab_keys"]
         vocab_dict = vocab_data["vocab_dict"]
         tokeniser = partial(selfies2vec, vocab_dict=vocab_dict)
-        trans_fn = lambda x: x
+        trans_fn = lambda x: [i for i in x if i]
         img_fn = lambda x: [
             Draw.MolToImage(MolFromSmiles(decoder(i)), (500, 500)) for i in x
         ]
@@ -285,7 +289,7 @@ def run(
                     y = mlp.forward(y)
             else:
                 y = None
-            _message.append(f"Sequence length is set to {lmax} from model metadata.")
+            _message.append(f"Sequence length set to {lmax} from model metadata.")
         bfn.semi_autoregressive = sar_flag[0]
         if quantise == "on":
             quantise_model_(bfn)
@@ -317,7 +321,7 @@ def run(
             y = None
         if prompt_info["lora_scaling"][0] != 1.0:
             adjust_lora_(bfn, prompt_info["lora_scaling"][0])
-        _message.append(f"Sequence length is set to {lmax} from model metadata.")
+        _message.append(f"Sequence length set to {lmax} from model metadata.")
         bfn.semi_autoregressive = sar_flag[0]
         if quantise == "on":
             quantise_model_(bfn)
@@ -348,7 +352,7 @@ def run(
             bfn.quantise()
         if jited == "on":
             bfn.compile()
-        _message.append(f"Sequence length is set to {lmax} from model metadata.")
+        _message.append(f"Sequence length set to {lmax} from model metadata.")
     # ------- inference -------
     allowed_tokens = parse_exclude_token(exclude_token, vocab_keys)
     if not allowed_tokens:
@@ -368,6 +372,7 @@ def run(
             vocab_keys=vocab_keys,
             method=_method,
             allowed_tokens=allowed_tokens,
+            sort=sorted_ == "on",
         )
         mols = trans_fn(mols)
         imgs = img_fn(mols)
@@ -387,6 +392,7 @@ def run(
             vocab_keys=vocab_keys,
             method=_method,
             allowed_tokens=allowed_tokens,
+            sort=sorted_ == "on",
         )
         mols = trans_fn(mols)
         imgs = img_fn(mols)
@@ -402,6 +408,7 @@ def run(
             vocab_keys=vocab_keys,
             method=_method,
             allowed_tokens=allowed_tokens,
+            sort=sorted_ == "on",
         )
         mols = trans_fn(mols)
         imgs = img_fn(mols)
@@ -412,6 +419,8 @@ def run(
     _message.append(
         f"{n_mol} smaples generated and saved to cache that can be downloaded."
     )
+    global _result_count
+    _result_count = n_mol
     return (
         imgs,
         mols,
@@ -541,6 +550,12 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
                 )
                 quantise = gr.Radio(["on", "off"], value="off", label="quantisation")
                 jited = gr.Radio(["on", "off"], value="off", label="JIT")
+                sorted_ = gr.Radio(
+                    ["on", "off"],
+                    value="off",
+                    label="sort result",
+                    info="sorting based on entropy",
+                )
     # ------ user interaction events -------
     btn.click(
         fn=run,
@@ -561,6 +576,7 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
             exclude_token,
             quantise,
             jited,
+            sorted_,
         ],
         outputs=[img, result, chemfig, message, btn_download],
     )
@@ -595,7 +611,7 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
     )
     lora_tabel.select(fn=select_lora, inputs=prompt, outputs=prompt)
     result.change(
-        fn=lambda x: gr.File(x, label="download", visible=True),
+        fn=lambda x: gr.File(x, label="download", visible=_result_count > 0),
         inputs=btn_download,
         outputs=btn_download,
     )
