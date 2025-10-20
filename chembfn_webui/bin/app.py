@@ -42,7 +42,8 @@ from lib.version import __version__
 
 vocabs = find_vocab()
 models = find_model()
-lora_selected = False  # lora select flag
+_lora_selected = False  # lora select flag
+_run_in_public = False  # public flag
 cache_dir = Path(__file__).parent.parent / "cache"
 
 HTML_STYLE = gr.InputHTMLAttributes(
@@ -130,12 +131,12 @@ def select_lora(evt: gr.SelectData, prompt: str) -> str:
     :return: new prompt string
     :rtype: str
     """
-    global lora_selected
-    if lora_selected:  # avoid double select
-        lora_selected = False
+    global _lora_selected
+    if _lora_selected and not _run_in_public:  # avoid double select
+        _lora_selected = False
         return prompt
     selected_lora = evt.value
-    lora_selected = True
+    _lora_selected = True
     if evt.index[1] != 0:
         return prompt
     if not prompt:
@@ -344,7 +345,11 @@ def run(
         if len(sar_flag) == 1:
             sar_flag = [sar_flag[0] for _ in range(len(weights))]
         bfn = EnsembleChemBFN(base_model_dir, lora_dir, mlps, weights)
-        y = [torch.tensor([i], dtype=torch.float32) for i in prompt_info["objective"]]
+        y = (
+            [torch.tensor([i], dtype=torch.float32) for i in prompt_info["objective"]]
+            if prompt_info["objective"]
+            else None
+        )
         if quantise == "on":
             bfn.quantise()
         if jited == "on":
@@ -616,10 +621,12 @@ def main() -> None:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "--public", default=False, help="open to public", action="store_true"
+        "-P", "--public", default=False, help="open to public", action="store_true"
     )
     parser.add_argument("-V", "--version", action="version", version=__version__)
     args = parser.parse_args()
+    global _run_in_public
+    _run_in_public = args.public
     app.launch(share=args.public, allowed_paths=[cache_dir.absolute().__str__()])
 
 
