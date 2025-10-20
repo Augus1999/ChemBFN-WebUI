@@ -42,8 +42,6 @@ from lib.version import __version__
 
 vocabs = find_vocab()
 models = find_model()
-_lora_selected = False  # lora select flag
-_run_in_public = False  # public flag
 cache_dir = Path(__file__).parent.parent / "cache"
 
 HTML_STYLE = gr.InputHTMLAttributes(
@@ -131,13 +129,9 @@ def select_lora(evt: gr.SelectData, prompt: str) -> str:
     :return: new prompt string
     :rtype: str
     """
-    global _lora_selected
-    if _lora_selected and not _run_in_public:  # avoid double select
-        _lora_selected = False
-        return prompt
     selected_lora = evt.value
-    _lora_selected = True
-    if evt.index[1] != 0:
+    exist_lora = parse_prompt(prompt)["lora"]
+    if evt.index[1] != 0 or selected_lora in exist_lora:
         return prompt
     if not prompt:
         return f"<{selected_lora}:1>"
@@ -625,8 +619,6 @@ def main() -> None:
     )
     parser.add_argument("-V", "--version", action="version", version=__version__)
     args = parser.parse_args()
-    global _run_in_public
-    _run_in_public = args.public
     app.launch(share=args.public, allowed_paths=[cache_dir.absolute().__str__()])
 
 
