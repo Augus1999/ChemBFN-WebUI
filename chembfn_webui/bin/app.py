@@ -43,6 +43,7 @@ from lib.version import __version__
 vocabs = find_vocab()
 models = find_model()
 cache_dir = Path(__file__).parent.parent / "cache"
+favicon_dir = Path(__file__).parent / "favicon.png"
 _result_count = 0
 
 HTML_STYLE = gr.InputHTMLAttributes(
@@ -635,7 +636,12 @@ def main() -> None:
     )
     parser.add_argument("-V", "--version", action="version", version=__version__)
     args = parser.parse_args()
-    app.launch(share=args.public, allowed_paths=[cache_dir.absolute().__str__()])
+    print(f"This is ChemBFN WebUI version {__version__}")
+    app.launch(
+        share=args.public,
+        allowed_paths=[cache_dir.absolute().__str__()],
+        favicon_path=favicon_dir.absolute().__str__(),
+    )
 
 
 if __name__ == "__main__":
