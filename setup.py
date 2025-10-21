@@ -48,7 +48,13 @@ setup(
     license_files=["LICEN[CS]E*"],
     package_dir={"chembfn_webui": "chembfn_webui"},
     package_data={
-        "chembfn_webui": ["./*/*/place_*.txt", "./*/*.txt", "./*/*.py", "./*/*.csv"]
+        "chembfn_webui": [
+            "./*/*/place_*.txt",
+            "./*/*.txt",
+            "./*/*.py",
+            "./*/*.csv",
+            "./*/*.png",
+        ]
     },
     include_package_data=True,
     author="Nianze A. Tao",
