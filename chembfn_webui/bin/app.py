@@ -504,7 +504,7 @@ with gr.Blocks(
             ) as gallery:
                 img = gr.Gallery(label="molecule", columns=4, height=512)
             with gr.Tab(label="model explorer"):
-                btn_refresh = gr.Button("refresh \U0001f504", variant="secondary")
+                btn_refresh = gr.Button("refresh", variant="secondary")
                 with gr.Tab(label="customised vocabulary"):
                     vocab_table = gr.Dataframe(
                         list(vocabs.keys()),
