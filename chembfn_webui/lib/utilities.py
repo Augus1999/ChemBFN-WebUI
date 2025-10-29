@@ -14,6 +14,33 @@ if "CHEMBFN_WEBUI_MODEL_DIR" in os.environ:
     _model_path = Path(os.environ["CHEMBFN_WEBUI_MODEL_DIR"])
 
 
+def sys_info() -> str:
+    """
+    Get system information.
+
+    :return: system info in html format
+    :rtype: str
+    """
+    import sys
+    import torch
+    import gradio as gr
+    import bayesianflow_for_chem as bfn
+    from .version import __version__
+
+    _python_version = ".".join([str(i) for i in sys.version_info[:3]])
+    return f"""
+            version: <a href="https://github.com/Augus1999/ChemBFN-WebUI">{__version__}</a>
+            &#x2000;•&#x2000;
+            bayesianflow-for-chem: <a href="https://github.com/Augus1999/bayesian-flow-network-for-chemistry">{bfn.__version__}</a>
+            &#x2000;•&#x2000;
+            python: {_python_version}
+            &#x2000;•&#x2000;
+            torch: {getattr(torch, '__long_version__', torch.__version__)}
+            &#x2000;•&#x2000;
+            gradio: {gr.__version__}
+            """
+
+
 def find_vocab() -> Dict[str, str]:
     """
     Find customised vocabulary files.

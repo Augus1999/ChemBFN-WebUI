@@ -32,6 +32,7 @@ from bayesianflow_for_chem.tool import (
     quantise_model_,
 )
 from lib.utilities import (
+    sys_info,
     find_model,
     find_vocab,
     parse_prompt,
@@ -265,7 +266,7 @@ def run(
     # ------- build model -------
     prompt_info = parse_prompt(prompt)
     sar_flag = parse_sar_control(sar_control)
-    print("Prompt summary:", prompt_info)  # show prompt info
+    print("Prompt summary:", prompt_info, "semi-autoregression:", sar_flag)  # prompt
     if not prompt_info["lora"]:
         if model_name in base_model_dict:
             lmax = sequence_size
@@ -431,8 +432,11 @@ def run(
     )
 
 
-with gr.Blocks(title="ChemBFN WebUI") as app:
-    gr.Markdown("### WebUI to generate and visualise molecules for ChemBFN method.")
+with gr.Blocks(
+    title="ChemBFN WebUI",
+    css="footer {display: none !important} .custom_footer {text-align:center;bottom:0;}",
+    analytics_enabled=False,
+) as app:
     with gr.Row():
         with gr.Column(scale=1):
             btn = gr.Button("RUN", variant="primary")
@@ -500,7 +504,7 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
             ) as gallery:
                 img = gr.Gallery(label="molecule", columns=4, height=512)
             with gr.Tab(label="model explorer"):
-                btn_refresh = gr.Button("refresh", variant="secondary")
+                btn_refresh = gr.Button("refresh \U0001f504", variant="secondary")
                 with gr.Tab(label="customised vocabulary"):
                     vocab_table = gr.Dataframe(
                         list(vocabs.keys()),
@@ -557,6 +561,7 @@ with gr.Blocks(title="ChemBFN WebUI") as app:
                     label="sort result",
                     info="sorting based on entropy",
                 )
+    gr.HTML(sys_info(), elem_classes="custom_footer", elem_id="footer")
     # ------ user interaction events -------
     btn.click(
         fn=run,
