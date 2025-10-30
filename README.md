@@ -62,6 +62,7 @@ For example,
 > >    "name": JOB_NAME
 > >}
 > >```
+> >The configureation file for base models can be downloaded [here](https://huggingface.co/suenoomozawa/ChemBFN/resolve/main/config.json).
 
 If placed correctly, all these files can be seen in the "model explorer" tab.
 
