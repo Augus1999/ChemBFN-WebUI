@@ -3,6 +3,7 @@
 """
 Define application behaviours.
 """
+import re
 import sys
 import argparse
 from pathlib import Path
@@ -179,8 +180,15 @@ def _build_result_prep_fn(fn_string: str) -> Callable[[str], str]:
     :rtype: callable
     """
     fn_string = fn_string.strip()
+    fn_string = re.findall(r"lambda \S+:\s?[^(\s](?s:.)*", fn_string)
     if not fn_string:
         return lambda x: x
+    fn_string = fn_string[0]
+    v = fn_string.split("lambda ")[-1].split(":")[0]
+    fn_string = re.search(rf"lambda {v}:\s?{v}(\.\S*)?", fn_string)
+    if not fn_string:
+        return lambda x: x
+    fn_string = re.sub(r"exit\([0-9]*?\)", "", fn_string.group())
     d = {}
     exec(f"fn = {fn_string}", None, d)
     return d["fn"]
