@@ -112,6 +112,7 @@ Under "advanced control" tab
 
 * You can control semi-autoregressive behaviours by key in `F` for switching off SAR, `T` for switching on SAR, and prompt like `F,F,T,...` to individually control the SAR in an ensemble model.
 * You can add unwanted tokens, e.g., `[Cu],p,[Si]`.
+* You can customise the result preprocessing function, e.g., the model output  a reaction SMILES "CCI.C[O-]>>COCC" which couldn't be recognised by RDKit; you can pass `lambda x: x.split(">>")[-1]` to force the program only looking at the products.
 
 ### 6. Generate molecules
 
