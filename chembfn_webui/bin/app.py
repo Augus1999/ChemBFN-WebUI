@@ -179,18 +179,13 @@ def _build_result_prep_fn(fn_string: str) -> Callable[[str], str]:
     :return: Description
     :rtype: callable
     """
-    fn_string = fn_string.strip()
-    fn_string = re.findall(r"lambda \S+:\s?[^(\s](?s:.)*", fn_string)
-    if not fn_string:
+    fn_string_ = fn_string.strip()
+    fn_string_ = re.findall(r"lambda \S+:\s?[^(\s]\S*[.\S+]?", fn_string_)
+    if not fn_string_:
         return lambda x: x
-    fn_string = fn_string[0]
-    v = fn_string.split("lambda ")[-1].split(":")[0]
-    fn_string = re.search(rf"lambda {v}:\s?{v}(\.\S*)?", fn_string)
-    if not fn_string:
-        return lambda x: x
-    fn_string = re.sub(r"exit\([0-9]*?\)", "", fn_string.group())
+    fn_string_ = re.sub(r"exit\([0-9]*?\)", "", fn_string_[0])
     d = {}
-    exec(f"fn = {fn_string}", None, d)
+    exec(f"fn = {fn_string_}", None, d)
     return d["fn"]
 
 
@@ -451,7 +446,7 @@ def run(
     with open(cache_dir / "results.csv", "w", encoding="utf-8", newline="") as rf:
         rf.write("\n".join(mols))
     _message.append(
-        f"{n_mol} {'smaple' if n_mol == 1 else 'samples'} generated and saved to cache that can be downloaded."
+        f"{n_mol} {'smaple' if n_mol in (0, 1) else 'samples'} generated and saved to cache that can be downloaded."
     )
     global _result_count
     _result_count = n_mol
