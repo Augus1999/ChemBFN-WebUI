@@ -6,8 +6,9 @@ Define application behaviours.
 import sys
 import argparse
 from pathlib import Path
+from copy import deepcopy
 from functools import partial
-from typing import Tuple, List, Dict, Union, Literal
+from typing import Tuple, List, Dict, Union, Literal, Callable
 
 sys.path.append(str(Path(__file__).parent.parent))
 from rdkit.Chem import Draw, MolFromSmiles  # type: ignore
@@ -76,7 +77,7 @@ def selfies2vec(sel: str, vocab_dict: Dict[str, int]) -> List[int]:
     return [vocab_dict.get(i, unknown_id) for i in s]
 
 
-def refresh(
+def _refresh(
     model_selected: str, vocab_selected: str, tokeniser_selected: str
 ) -> Tuple[
     List[str], List[str], List[List[str]], List[List[str]], gr.Dropdown, gr.Dropdown
@@ -121,7 +122,7 @@ def refresh(
     return a, b, c, d, e, f
 
 
-def select_lora(evt: gr.SelectData, prompt: str) -> str:
+def _select_lora(evt: gr.SelectData, prompt: str) -> str:
     """
     Select LoRA model name from Dataframe object.
 
@@ -141,7 +142,7 @@ def select_lora(evt: gr.SelectData, prompt: str) -> str:
     return f"{prompt};\n<{selected_lora}:1>"
 
 
-def token_name_change_evt(
+def _token_name_change_evt(
     token_name: str, vocab_fn: str
 ) -> Tuple[gr.Dropdown, gr.Tab, gr.Tab]:
     """
@@ -168,6 +169,23 @@ def token_name_change_evt(
     return a, b, c
 
 
+def _build_result_prep_fn(fn_string: str) -> Callable[[str], str]:
+    """
+    Build result preprocessing function.
+
+    :param fn_string: string form result preprocessing function
+    :type fn_string: str
+    :return: Description
+    :rtype: callable
+    """
+    fn_string = fn_string.strip()
+    if not fn_string:
+        return lambda x: x
+    d = {}
+    exec(f"fn = {fn_string}", None, d)
+    return d["fn"]
+
+
 def run(
     model_name: str,
     token_name: str,
@@ -186,6 +204,7 @@ def run(
     quantise: Literal["on", "off"],
     jited: Literal["on", "off"],
     sorted_: Literal["on", "off"],
+    result_prep_fn: str,
 ) -> Tuple[Union[List, None], List[str], str, gr.TextArea, str]:
     """
     Run generation or inpainting.
@@ -207,6 +226,7 @@ def run(
     :param quantise: `"on"` or `"off"`
     :param jited: `"on"` or `"off"`
     :param sorted\\_: whether to sort the reulst; `"on"` or `"off"`
+    :param result_prep_fn: a string form result preprocessing function
     :type model_name: str
     :type token_name: str
     :type vocab_fn: str
@@ -224,6 +244,7 @@ def run(
     :type quantise: str
     :type jited: str
     :type sorted\\_: str
+    :type result_prep_fn: str
     :return: list of images \n
              list of generated molecules \n
              Chemfig code \n
@@ -266,7 +287,9 @@ def run(
     # ------- build model -------
     prompt_info = parse_prompt(prompt)
     sar_flag = parse_sar_control(sar_control)
-    print("Prompt summary:", prompt_info, "semi-autoregression:", sar_flag)  # prompt
+    _info = deepcopy(prompt_info)
+    _info["semi-autoregression"] = deepcopy(sar_flag)
+    print("Prompt summary:", _info)  # prompt
     if not prompt_info["lora"]:
         if model_name in base_model_dict:
             lmax = sequence_size
@@ -355,6 +378,7 @@ def run(
         if jited == "on":
             bfn.compile()
         _message.append(f"Sequence length set to {lmax} from model metadata.")
+    result_prep_fn_ = lambda x: [_build_result_prep_fn(result_prep_fn)(i) for i in x]
     # ------- inference -------
     allowed_tokens = parse_exclude_token(exclude_token, vocab_keys)
     if not allowed_tokens:
@@ -376,7 +400,7 @@ def run(
             allowed_tokens=allowed_tokens,
             sort=sorted_ == "on",
         )
-        mols = trans_fn(mols)
+        mols = trans_fn(result_prep_fn_(mols))
         imgs = img_fn(mols)
         chemfigs = chemfig_fn(mols)
         if template:
@@ -396,7 +420,7 @@ def run(
             allowed_tokens=allowed_tokens,
             sort=sorted_ == "on",
         )
-        mols = trans_fn(mols)
+        mols = trans_fn(result_prep_fn_(mols))
         imgs = img_fn(mols)
         chemfigs = chemfig_fn(mols)
     else:
@@ -412,14 +436,14 @@ def run(
             allowed_tokens=allowed_tokens,
             sort=sorted_ == "on",
         )
-        mols = trans_fn(mols)
+        mols = trans_fn(result_prep_fn_(mols))
         imgs = img_fn(mols)
         chemfigs = chemfig_fn(mols)
     n_mol = len(mols)
     with open(cache_dir / "results.csv", "w", encoding="utf-8", newline="") as rf:
         rf.write("\n".join(mols))
     _message.append(
-        f"{n_mol} smaples generated and saved to cache that can be downloaded."
+        f"{n_mol} {'smaple' if n_mol == 1 else 'samples'} generated and saved to cache that can be downloaded."
     )
     global _result_count
     _result_count = n_mol
@@ -489,6 +513,7 @@ with gr.Blocks(
                         headers=["molecule"],
                         col_count=(1, "fixed"),
                         label="",
+                        interactive=False,
                         show_fullscreen_button=True,
                         show_row_numbers=True,
                         show_copy_button=True,
@@ -553,14 +578,20 @@ with gr.Blocks(
                     placeholder="key in unwanted tokens separated by comma.",
                     html_attributes=HTML_STYLE,
                 )
-                quantise = gr.Radio(["on", "off"], value="off", label="quantisation")
-                jited = gr.Radio(["on", "off"], value="off", label="JIT")
-                sorted_ = gr.Radio(
-                    ["on", "off"],
-                    value="off",
-                    label="sort result",
-                    info="sorting based on entropy",
+                result_prep_fn = gr.Textbox(
+                    "lambda x: x",
+                    label="result preprocessing function",
+                    placeholder="lambda x: x",
+                    html_attributes=HTML_STYLE,
                 )
+                with gr.Row(scale=1):
+                    quantise = gr.Radio(
+                        ["on", "off"], value="off", label="quantisation"
+                    )
+                    jited = gr.Radio(["on", "off"], value="off", label="JIT")
+                    sorted_ = gr.Radio(
+                        ["on", "off"], value="off", label="sort result based on entropy"
+                    )
     gr.HTML(sys_info(), elem_classes="custom_footer", elem_id="footer")
     # ------ user interaction events -------
     btn.click(
@@ -583,11 +614,12 @@ with gr.Blocks(
             quantise,
             jited,
             sorted_,
+            result_prep_fn,
         ],
         outputs=[img, result, chemfig, message, btn_download],
     )
     btn_refresh.click(
-        fn=refresh,
+        fn=_refresh,
         inputs=[model_name, vocab_fn, token_name],
         outputs=[
             vocab_table,
@@ -599,7 +631,7 @@ with gr.Blocks(
         ],
     )
     token_name.input(
-        fn=token_name_change_evt,
+        fn=_token_name_change_evt,
         inputs=[token_name, vocab_fn],
         outputs=[vocab_fn, code, gallery],
     )
@@ -615,7 +647,7 @@ with gr.Blocks(
         inputs=[method, temperature],
         outputs=temperature,
     )
-    lora_tabel.select(fn=select_lora, inputs=prompt, outputs=prompt)
+    lora_tabel.select(fn=_select_lora, inputs=prompt, outputs=prompt)
     result.change(
         fn=lambda x: gr.File(x, label="download", visible=_result_count > 0),
         inputs=btn_download,
