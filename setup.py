@@ -63,9 +63,9 @@ setup(
     python_requires=">=3.11",
     install_requires=[
         "bayesianflow_for_chem>=2.2.2",
-        "mol2chemfigPy3>=1.5.11",
-        "gradio>=5.32.1",
-        "torch>=2.7.0",
+        "mol2chemfigPy3>=1.5.12",
+        "gradio>=6.0.0",
+        "torch>=2.9.0",
         "selfies>=2.2.0",
     ],
     project_urls={"Source": "https://github.com/Augus1999/ChemBFN-WebUI"},
