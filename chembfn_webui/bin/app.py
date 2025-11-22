@@ -459,14 +459,11 @@ def run(
     )
 
 
-with gr.Blocks(
-    title="ChemBFN WebUI",
-    css="footer {display: none !important} .custom_footer {text-align:center;bottom:0;}",
-    analytics_enabled=False,
-) as app:
+with gr.Blocks(title="ChemBFN WebUI", analytics_enabled=False) as app:
     with gr.Row():
         with gr.Column(scale=1):
             btn = gr.Button("RUN", variant="primary")
+            stop = gr.Button("\u23f9", variant="stop", visible=False)
             model_name = gr.Dropdown(
                 [i[0] for i in models["base"]] + [i[0] for i in models["standalone"]],
                 label="model",
@@ -511,15 +508,15 @@ with gr.Blocks(
                 message = gr.TextArea(label="message", lines=2)
             with gr.Tab(label="result viewer"):
                 with gr.Tab(label="result"):
-                    btn_download = gr.File(label="download", visible=False)
+                    btn_download = gr.File(
+                        str(cache_dir / "results.csv"), label="download", visible=False
+                    )
                     result = gr.Dataframe(
                         headers=["molecule"],
-                        col_count=(1, "fixed"),
+                        column_count=(1, "fixed"),
                         label="",
                         interactive=False,
-                        show_fullscreen_button=True,
                         show_row_numbers=True,
-                        show_copy_button=True,
                     )
                 with gr.Tab(
                     label="LATEX Chemfig", visible=token_name.value != "FASTA"
@@ -537,7 +534,7 @@ with gr.Blocks(
                     vocab_table = gr.Dataframe(
                         list(vocabs.keys()),
                         headers=["name"],
-                        col_count=(1, "fixed"),
+                        column_count=(1, "fixed"),
                         label="",
                         interactive=False,
                         show_row_numbers=True,
@@ -546,7 +543,7 @@ with gr.Blocks(
                     base_table = gr.Dataframe(
                         [i[0] for i in models["base"]],
                         headers=["name"],
-                        col_count=(1, "fixed"),
+                        column_count=(1, "fixed"),
                         label="",
                         interactive=False,
                         show_row_numbers=True,
@@ -555,7 +552,7 @@ with gr.Blocks(
                     standalone_table = gr.Dataframe(
                         [[i[0], i[2]] for i in models["standalone"]],
                         headers=["name", "objective"],
-                        col_count=(2, "fixed"),
+                        column_count=(2, "fixed"),
                         label="",
                         interactive=False,
                         show_row_numbers=True,
@@ -564,7 +561,7 @@ with gr.Blocks(
                     lora_tabel = gr.Dataframe(
                         [[i[0], i[2]] for i in models["lora"]],
                         headers=["name", "objective"],
-                        col_count=(2, "fixed"),
+                        column_count=(2, "fixed"),
                         label="",
                         interactive=False,
                         show_row_numbers=True,
@@ -597,7 +594,14 @@ with gr.Blocks(
                     )
     gr.HTML(sys_info(), elem_classes="custom_footer", elem_id="footer")
     # ------ user interaction events -------
-    btn.click(
+    gen = btn.click(
+        fn=lambda: (
+            gr.Button("RUN", variant="primary", visible=False),
+            gr.Button("\u23f9", variant="stop", visible=True),
+        ),
+        inputs=None,
+        outputs=[btn, stop],
+    ).then(
         fn=run,
         inputs=[
             model_name,
@@ -620,6 +624,23 @@ with gr.Blocks(
             result_prep_fn,
         ],
         outputs=[img, result, chemfig, message, btn_download],
+    )
+    gen.then(
+        fn=lambda: (
+            gr.Button("RUN", variant="primary", visible=True),
+            gr.Button("\u23f9", variant="stop", visible=False),
+        ),
+        inputs=None,
+        outputs=[btn, stop],
+    )
+    stop.click(
+        fn=lambda: (
+            gr.Button("RUN", variant="primary", visible=True),
+            gr.Button("\u23f9", variant="stop", visible=False),
+        ),
+        inputs=None,
+        outputs=[btn, stop],
+        cancels=[gen],
     )
     btn_refresh.click(
         fn=_refresh,
@@ -679,8 +700,10 @@ def main() -> None:
     print(f"This is ChemBFN WebUI version {__version__}")
     app.launch(
         share=args.public,
+        footer_links=["api"],
         allowed_paths=[cache_dir.absolute().__str__()],
         favicon_path=favicon_dir.absolute().__str__(),
+        css=".custom_footer {text-align:center;bottom:0;}",
     )
 
 
