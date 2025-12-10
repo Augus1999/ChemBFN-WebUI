@@ -3,11 +3,12 @@
 """
 Utilities.
 """
+import re
 import os
 import json
 from glob import glob
 from pathlib import Path
-from typing import Dict, List, Tuple, Union
+from typing import Dict, List, Tuple, Union, Optional, Callable
 
 _model_path = Path(__file__).parent.parent / "model"
 if "CHEMBFN_WEBUI_MODEL_DIR" in os.environ:
@@ -139,7 +140,7 @@ def _get_lora_info(prompt: str) -> Tuple[str, List[float], float]:
 
 
 def parse_prompt(
-    prompt: str,
+    prompt: Optional[str],
 ) -> Dict[str, Union[List[str], List[float], List[List[float]]]]:
     """
     Parse propmt.
@@ -162,6 +163,8 @@ def parse_prompt(
             }```
     :rtype: dict
     """
+    if prompt is None:
+        prompt = ""
     prompt_group = prompt.strip().replace("\n", "").split(";")
     prompt_group = [i for i in prompt_group if i]
     info = {"lora": [], "objective": [], "lora_scaling": []}
@@ -192,7 +195,7 @@ def parse_prompt(
     return info
 
 
-def parse_exclude_token(tokens: str, vocab_keys: List[str]) -> List[str]:
+def parse_exclude_token(tokens: Optional[str], vocab_keys: List[str]) -> List[str]:
     """
     Parse exclude token string.
 
@@ -203,6 +206,8 @@ def parse_exclude_token(tokens: str, vocab_keys: List[str]) -> List[str]:
     :return: a list of allowed vocabulary
     :rtype: list
     """
+    if tokens is None:
+        tokens = ""
     tokens = tokens.strip().replace("\n", "").split(",")
     tokens = [i for i in tokens if i]
     if not tokens:
@@ -211,7 +216,7 @@ def parse_exclude_token(tokens: str, vocab_keys: List[str]) -> List[str]:
     return tokens
 
 
-def parse_sar_control(sar_control: str) -> List[bool]:
+def parse_sar_control(sar_control: Optional[str]) -> List[bool]:
     """
     Parse semi-autoregression control string.
 
@@ -225,12 +230,35 @@ def parse_sar_control(sar_control: str) -> List[bool]:
     :return: a list of SAR flag
     :rtype: list
     """
+    if sar_control is None:
+        sar_control = ""
     sar_flag = sar_control.strip().replace("\n", "").split(",")
     sar_flag = [i for i in sar_flag if i]
     if not sar_flag:
         return [False]
     sar_flag = [i.lower() == "t" for i in sar_flag]
     return sar_flag
+
+
+def build_result_prep_fn(fn_string: Optional[str]) -> Callable[[str], str]:
+    """
+    Build result preprocessing function.
+
+    :param fn_string: string form result preprocessing function
+    :type fn_string: str
+    :return: Description
+    :rtype: callable
+    """
+    if fn_string is None:
+        fn_string = ""
+    fn_string_ = fn_string.strip()
+    fn_string_ = re.findall(r"lambda \S+:\s?[^(\s]\S*[.\S+]?", fn_string_)
+    if not fn_string_:
+        return lambda x: x
+    fn_string_ = re.sub(r"exit\([0-9]*?\)", "", fn_string_[0])
+    d = {}
+    exec(f"fn = {fn_string_}", None, d)
+    return d["fn"]
 
 
 if __name__ == "__main__":

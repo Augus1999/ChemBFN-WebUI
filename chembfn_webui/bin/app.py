@@ -3,13 +3,12 @@
 """
 Define application behaviours.
 """
-import re
 import sys
 import argparse
 from pathlib import Path
 from copy import deepcopy
 from functools import partial
-from typing import Tuple, List, Dict, Union, Literal, Callable
+from typing import Tuple, List, Dict, Optional, Union, Literal
 
 sys.path.append(str(Path(__file__).parent.parent))
 from rdkit.Chem import Draw, MolFromSmiles  # type: ignore
@@ -40,6 +39,7 @@ from lib.utilities import (
     parse_prompt,
     parse_exclude_token,
     parse_sar_control,
+    build_result_prep_fn,
 )
 from lib.version import __version__
 
@@ -170,25 +170,6 @@ def _token_name_change_evt(
     return a, b, c
 
 
-def _build_result_prep_fn(fn_string: str) -> Callable[[str], str]:
-    """
-    Build result preprocessing function.
-
-    :param fn_string: string form result preprocessing function
-    :type fn_string: str
-    :return: Description
-    :rtype: callable
-    """
-    fn_string_ = fn_string.strip()
-    fn_string_ = re.findall(r"lambda \S+:\s?[^(\s]\S*[.\S+]?", fn_string_)
-    if not fn_string_:
-        return lambda x: x
-    fn_string_ = re.sub(r"exit\([0-9]*?\)", "", fn_string_[0])
-    d = {}
-    exec(f"fn = {fn_string_}", None, d)
-    return d["fn"]
-
-
 def run(
     model_name: str,
     token_name: str,
@@ -199,15 +180,15 @@ def run(
     guidance_strength: float,
     method: Literal["BFN", "ODE"],
     temperature: float,
-    prompt: str,
-    scaffold: str,
-    template: str,
-    sar_control: str,
-    exclude_token: str,
+    prompt: Optional[str],
+    scaffold: Optional[str],
+    template: Optional[str],
+    sar_control: Optional[str],
+    exclude_token: Optional[str],
     quantise: Literal["on", "off"],
     jited: Literal["on", "off"],
     sorted_: Literal["on", "off"],
-    result_prep_fn: str,
+    result_prep_fn: Optional[str],
 ) -> Tuple[Union[List, None], List[str], str, gr.TextArea, str]:
     """
     Run generation or inpainting.
@@ -381,11 +362,15 @@ def run(
         if jited == "on":
             bfn.compile()
         _message.append(f"Sequence length set to {lmax} from model metadata.")
-    result_prep_fn_ = lambda x: [_build_result_prep_fn(result_prep_fn)(i) for i in x]
+    result_prep_fn_ = lambda x: [build_result_prep_fn(result_prep_fn)(i) for i in x]
     # ------- inference -------
     allowed_tokens = parse_exclude_token(exclude_token, vocab_keys)
     if not allowed_tokens:
         allowed_tokens = "all"
+    if scaffold is None:
+        scaffold = ""
+    if template is None:
+        template = ""
     scaffold = scaffold.strip()
     template = template.strip()
     if scaffold:
