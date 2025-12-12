@@ -154,7 +154,7 @@ def parse_prompt(
                    case VI. one LoRA with condition `"<name>:[a,b,...]"` --> `{"lora": [name], "objective": [[a, b, ...]], "lora_scaling": [1]}`\n
                    case VII. several LoRAs with conditions `"<name1:A1>:[a1,b1,...];<name2>:[a2,b2,c2,...]"` --> `{"lora": [name1, name2], "objective": [[a1, b1, ...], [a2, b2, c2, ...]], "lora_scaling": [A1, 1]}`\n
                    case VIII. other cases --> `{"lora": [], "objective": [], "lora_scaling": []}`\n
-    :type prompt: str
+    :type prompt: str | None
     :return: ```
             {
               "lora": [name1, name2, ...],
@@ -201,7 +201,7 @@ def parse_exclude_token(tokens: Optional[str], vocab_keys: List[str]) -> List[st
 
     :param tokens: unwanted token string in the format `"token1,token2,..."`
     :param vocab_keys: vocabulary elements
-    :type tokens: str
+    :type tokens: str | None
     :type vocab_keys: list
     :return: a list of allowed vocabulary
     :rtype: list
@@ -226,7 +226,7 @@ def parse_sar_control(sar_control: Optional[str]) -> List[bool]:
                         case III. `"T"` --> `[True]` \n
                         case IV. `F,T,...` --> `[False, True, ...]` \n
                         case V. other cases --> `[False, False, ...]` \n
-    :type sar_control: str
+    :type sar_control: str | None
     :return: a list of SAR flag
     :rtype: list
     """
@@ -245,7 +245,7 @@ def build_result_prep_fn(fn_string: Optional[str]) -> Callable[[str], str]:
     Build result preprocessing function.
 
     :param fn_string: string form result preprocessing function
-    :type fn_string: str
+    :type fn_string: str | None
     :return: Description
     :rtype: callable
     """

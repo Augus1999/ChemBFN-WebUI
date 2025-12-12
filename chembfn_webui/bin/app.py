@@ -220,15 +220,15 @@ def run(
     :type guidance_strength: float
     :type method: str
     :type temperature: float
-    :type prompt: str
-    :type scaffold: str
-    :type template: str
-    :type sar_control: str
-    :type exclude_token: str
+    :type prompt: str | None
+    :type scaffold: str | None
+    :type template: str | None
+    :type sar_control: str | None
+    :type exclude_token: str | None
     :type quantise: str
     :type jited: str
     :type sorted\\_: str
-    :type result_prep_fn: str
+    :type result_prep_fn: str | None
     :return: list of images \n
              list of generated molecules \n
              Chemfig code \n
