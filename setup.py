@@ -64,7 +64,7 @@ setup(
     install_requires=[
         "bayesianflow_for_chem>=2.2.2",
         "mol2chemfigPy3>=1.5.12",
-        "gradio>=6.0.0",
+        "gradio>=6.0.0,<7.0.0",
         "torch>=2.9.0",
         "selfies>=2.2.0",
     ],
@@ -77,6 +77,7 @@ setup(
         "Programming Language :: Python :: 3.11",
         "Programming Language :: Python :: 3.12",
         "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
         "Topic :: Scientific/Engineering :: Chemistry",
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
