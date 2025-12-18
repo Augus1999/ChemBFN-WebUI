@@ -586,6 +586,9 @@ with gr.Blocks(title="ChemBFN WebUI", analytics_enabled=False) as app:
         ),
         inputs=None,
         outputs=[btn, stop],
+        api_name="switch_to_stop_mode",
+        api_description="Switch to STOP.",
+        api_visibility="private",
     ).then(
         fn=run,
         inputs=[
@@ -609,6 +612,8 @@ with gr.Blocks(title="ChemBFN WebUI", analytics_enabled=False) as app:
             result_prep_fn,
         ],
         outputs=[img, result, chemfig, message, btn_download],
+        api_name="run",
+        api_description="Run ChemBFN model.",
     )
     gen.then(
         fn=lambda: (
@@ -617,6 +622,9 @@ with gr.Blocks(title="ChemBFN WebUI", analytics_enabled=False) as app:
         ),
         inputs=None,
         outputs=[btn, stop],
+        api_name="switch_back_to_run_mode",
+        api_description="Swtch back to RUN.",
+        api_visibility="private",
     )
     stop.click(
         fn=lambda: (
@@ -626,6 +634,8 @@ with gr.Blocks(title="ChemBFN WebUI", analytics_enabled=False) as app:
         inputs=None,
         outputs=[btn, stop],
         cancels=[gen],
+        api_name="stop",
+        api_description="Stop the model.",
     )
     btn_refresh.click(
         fn=_refresh,
@@ -638,11 +648,14 @@ with gr.Blocks(title="ChemBFN WebUI", analytics_enabled=False) as app:
             model_name,
             vocab_fn,
         ],
+        api_name="refresh_model_list",
+        api_description="Refresh the model list.",
     )
     token_name.input(
         fn=_token_name_change_evt,
         inputs=[token_name, vocab_fn],
         outputs=[vocab_fn, code, gallery],
+        api_visibility="private",
     )
     method.input(
         fn=lambda x, y: gr.Slider(
@@ -655,12 +668,25 @@ with gr.Blocks(title="ChemBFN WebUI", analytics_enabled=False) as app:
         ),
         inputs=[method, temperature],
         outputs=temperature,
+        api_name="select_sampling_method",
+        api_description="Select sampling method between 'BFN' and 'ODE'.",
+        api_visibility="private",
     )
-    lora_tabel.select(fn=_select_lora, inputs=prompt, outputs=prompt)
+    lora_tabel.select(
+        fn=_select_lora,
+        inputs=prompt,
+        outputs=prompt,
+        api_name="select_lora",
+        api_description="Select LoRA model from the model list.",
+        api_visibility="private",
+    )
     result.change(
         fn=lambda x: gr.File(x, label="download", visible=_result_count > 0),
         inputs=btn_download,
         outputs=btn_download,
+        api_name="change_download_state",
+        api_description="Hide or show the file downloading item.",
+        api_visibility="private"
     )
 
 
