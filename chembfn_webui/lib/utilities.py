@@ -3,8 +3,8 @@
 """
 Utilities.
 """
-import re
 import os
+import ast
 import json
 from glob import glob
 from pathlib import Path
@@ -13,6 +13,58 @@ from typing import Dict, List, Tuple, Union, Optional, Callable
 _model_path = Path(__file__).parent.parent / "model"
 if "CHEMBFN_WEBUI_MODEL_DIR" in os.environ:
     _model_path = Path(os.environ["CHEMBFN_WEBUI_MODEL_DIR"])
+
+_ALLOWED_STRING_METHODS = {"strip", "upper", "lower", "replace", "split"}
+_ALLOWED_NODES = (
+    ast.arguments,
+    ast.arg,
+    ast.Expression,
+    ast.Lambda,
+    ast.Load,
+    ast.Name,
+    ast.Call,
+    ast.Constant,
+    ast.Subscript,
+    ast.UnaryOp,
+    ast.USub,
+)
+
+
+class _SafeLambdaValidator(ast.NodeVisitor):
+    def visit(self, node):
+        if not isinstance(node, _ALLOWED_NODES):
+            raise ValueError(f"Disallowed syntax: {type(node).__name__}.")
+        super().visit(node)
+
+    def visit_Name(self, node: ast.Name):
+        if node.id != "x":
+            raise ValueError(f"Only variable 'x' is allowed, not '{node.id}'.")
+
+    def visit_arguments(self, node: ast.arguments):
+        if len(node.args) > 1:
+            raise ValueError("Only one argument is allowed.")
+
+    def visit_Subscript(self, node: ast.Subscript):
+        if not isinstance(node.value, ast.Call):
+            raise ValueError()
+        if not isinstance(node.value.func, ast.Attribute):
+            raise ValueError()
+        if node.value.func.attr != "split":
+            raise ValueError()
+        self.visit(node.value)
+
+    def visit_Call(self, node: ast.Call):
+        # only allow lambda x: x.<method>
+        if not isinstance(node.func, ast.Attribute):
+            raise ValueError("Only method calls on string objects are allowed.")
+        if not isinstance(node.func.value, ast.Name):
+            raise ValueError(f"No nested method calling is allowed.")
+        if node.func.value.id != "x":
+            raise ValueError("Only 'x' can be used.")
+        if node.func.attr not in _ALLOWED_STRING_METHODS:
+            raise ValueError(f"Method '{node.func.attr}' not allowed.")
+        for arg in node.args:
+            self.visit(arg)
 
 
 def sys_info() -> str:
@@ -249,16 +301,24 @@ def build_result_prep_fn(fn_string: Optional[str]) -> Callable[[str], str]:
     :return: Description
     :rtype: callable
     """
-    if fn_string is None:
-        fn_string = ""
-    fn_string_ = fn_string.strip()
-    fn_string_ = re.findall(r"lambda \S+:\s?[^(\s]\S*[.\S+]?", fn_string_)
-    if not fn_string_:
+    if not fn_string:
         return lambda x: x
-    fn_string_ = re.sub(r"exit\([0-9]*?\)", "", fn_string_[0])
-    d = {}
-    exec(f"fn = {fn_string_}", None, d)
-    return d["fn"]
+    try:
+        tree = ast.parse(fn_string, mode="eval")
+        _SafeLambdaValidator().visit(tree)
+        code = compile(tree, filename="<safe_lambda>", mode="eval")
+        fn = eval(code, {"__builtins__": {}}, {})
+        if not callable(fn):
+            print(
+                "Warning: Expression did not produce a function. Returned identity as result preprocessing function."
+            )
+            return lambda x: x
+        return fn
+    except Exception as e:
+        print(
+            f"Invalid or unsafe expression: {e} Returned identity as result preprocessing function."
+        )
+        return lambda x: x
 
 
 if __name__ == "__main__":
