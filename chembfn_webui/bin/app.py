@@ -244,6 +244,8 @@ def run(
     lora_label_dict = dict([[i[0], i[2] != []] for i in models["lora"]])
     standalone_lmax_dict = dict([[i[0], i[3]] for i in models["standalone"]])
     lora_lmax_dict = dict([[i[0], i[3]] for i in models["lora"]])
+    # ------- build result preprocessing function -------
+    _result_prep_fn = build_result_prep_fn(result_prep_fn)
     # ------- build tokeniser -------
     if token_name == "SMILES & SAFE":
         vocab_keys = VOCAB_KEYS
@@ -362,7 +364,7 @@ def run(
         if jited == "on":
             bfn.compile()
         _message.append(f"Sequence length set to {lmax} from model metadata.")
-    result_prep_fn_ = lambda x: [build_result_prep_fn(result_prep_fn)(i) for i in x]
+    result_prep_fn_ = lambda x: [_result_prep_fn(i) for i in x]
     # ------- inference -------
     allowed_tokens = parse_exclude_token(exclude_token, vocab_keys)
     if not allowed_tokens:
@@ -427,11 +429,10 @@ def run(
         mols = trans_fn(result_prep_fn_(mols))
         imgs = img_fn(mols)
         chemfigs = chemfig_fn(mols)
-    n_mol = len(mols)
     with open(cache_dir / "results.csv", "w", encoding="utf-8", newline="") as rf:
         rf.write("\n".join(mols))
     _message.append(
-        f"{n_mol} {'smaple' if n_mol in (0, 1) else 'samples'} generated and saved to cache that can be downloaded."
+        f"{(n_mol := len(mols))} {'smaple' if n_mol in (0, 1) else 'samples'} generated and saved to cache that can be downloaded."
     )
     global _result_count
     _result_count = n_mol
@@ -686,7 +687,7 @@ with gr.Blocks(title="ChemBFN WebUI", analytics_enabled=False) as app:
         outputs=btn_download,
         api_name="change_download_state",
         api_description="Hide or show the file downloading item.",
-        api_visibility="private"
+        api_visibility="private",
     )
 
 

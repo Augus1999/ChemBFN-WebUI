@@ -8,63 +8,90 @@ import ast
 import json
 from glob import glob
 from pathlib import Path
-from typing import Dict, List, Tuple, Union, Optional, Callable
+from typing import Dict, List, Tuple, Union, Optional, Callable, Any
 
 _model_path = Path(__file__).parent.parent / "model"
 if "CHEMBFN_WEBUI_MODEL_DIR" in os.environ:
     _model_path = Path(os.environ["CHEMBFN_WEBUI_MODEL_DIR"])
 
-_ALLOWED_STRING_METHODS = {"strip", "upper", "lower", "replace", "split"}
+_ALLOWED_STRING_METHODS = {"strip", "replace", "split"}
 _ALLOWED_NODES = (
     ast.arguments,
     ast.arg,
     ast.Expression,
+    ast.Attribute,
+    ast.Subscript,
+    ast.Constant,
+    ast.UnaryOp,
     ast.Lambda,
     ast.Load,
     ast.Name,
     ast.Call,
-    ast.Constant,
-    ast.Subscript,
-    ast.UnaryOp,
     ast.USub,
 )
 
 
 class _SafeLambdaValidator(ast.NodeVisitor):
-    def visit(self, node):
+    def visit(self, node: ast.AST) -> Any:
         if not isinstance(node, _ALLOWED_NODES):
-            raise ValueError(f"Disallowed syntax: {type(node).__name__}.")
+            raise ValueError(f"Disallowed syntax: {type(node).__name__}")
         super().visit(node)
 
-    def visit_Name(self, node: ast.Name):
+    def visit_Lambda(self, node: ast.Lambda) -> Any:
+        if len(node.args.args) != 1:
+            raise ValueError("Only one argument is accepted")
+        if node.args.args[0].arg != "x":
+            raise ValueError("Lambda argument must be named 'x'")
+        self.visit(node.body)
+
+    def visit_Name(self, node: ast.Name) -> None:
         if node.id != "x":
-            raise ValueError(f"Only variable 'x' is allowed, not '{node.id}'.")
+            raise ValueError(f"Only variable 'x' is allowed, not '{node.id}'")
 
-    def visit_arguments(self, node: ast.arguments):
+    def visit_arguments(self, node: ast.arguments) -> None:
         if len(node.args) > 1:
-            raise ValueError("Only one argument is allowed.")
+            raise ValueError("Only one argument is allowed")
 
-    def visit_Subscript(self, node: ast.Subscript):
+    def visit_Subscript(self, node: ast.Subscript) -> Any:
+        # Only allow x.split(...)[idx]
         if not isinstance(node.value, ast.Call):
-            raise ValueError()
+            raise ValueError("Indexing should only be used after `split` method")
         if not isinstance(node.value.func, ast.Attribute):
-            raise ValueError()
+            raise ValueError("Indexing should only be used after `split` method")
         if node.value.func.attr != "split":
-            raise ValueError()
+            raise ValueError("Indexing should only be used after `split` method")
+        if not isinstance(node.slice, (ast.Constant, ast.UnaryOp)):
+            raise ValueError("Only number index is accepted")
         self.visit(node.value)
+        idx = node.slice  # should be positive or negative int
+        if isinstance(idx, ast.UnaryOp) and isinstance(idx.op, ast.USub):
+            if not isinstance(idx.operand, ast.Constant):
+                raise ValueError("Invalid index")
+        elif not isinstance(idx, ast.Constant):
+            raise ValueError("Index must be an integer literal")
+        self.visit(idx)
 
-    def visit_Call(self, node: ast.Call):
-        # only allow lambda x: x.<method>
+    def visit_Attribute(self, node: ast.Attribute) -> Any:
+        # Only allow x.<method>
+        if not isinstance(node.value, ast.Name):
+            raise ValueError("No nested method calling is allowed")
+        if node.value.id != "x":
+            raise ValueError("Please only use 'x' as argument")
+        if node.attr not in _ALLOWED_STRING_METHODS:
+            raise ValueError(f"Method '{node.attr}' not allowed")
+        self.generic_visit(node)
+
+    def visit_Call(self, node: ast.Call) -> Any:
+        # only allow x.<method>(...)
         if not isinstance(node.func, ast.Attribute):
-            raise ValueError("Only method calls on string objects are allowed.")
-        if not isinstance(node.func.value, ast.Name):
-            raise ValueError(f"No nested method calling is allowed.")
-        if node.func.value.id != "x":
-            raise ValueError("Only 'x' can be used.")
-        if node.func.attr not in _ALLOWED_STRING_METHODS:
-            raise ValueError(f"Method '{node.func.attr}' not allowed.")
+            raise ValueError("Only method calls on string objects are allowed")
+        self.visit(node.func)
         for arg in node.args:
+            if not isinstance(arg, ast.Constant):
+                raise ValueError("Only literal arguments allowed")
             self.visit(arg)
+        if node.keywords:
+            raise ValueError("Keyword arguments are not allowed")
 
 
 def sys_info() -> str:
@@ -316,7 +343,7 @@ def build_result_prep_fn(fn_string: Optional[str]) -> Callable[[str], str]:
         return fn
     except Exception as e:
         print(
-            f"Invalid or unsafe expression: {e} Returned identity as result preprocessing function."
+            f"Invalid or unsafe expression: {e}. Returned identity as result preprocessing function."
         )
         return lambda x: x
 
