@@ -8,6 +8,11 @@
 <img src="image/screenshot_4.jpeg" alt="screenshot 4" width="400" height="auto">
 </p>
 
+> [!IMPORTANT]
+>
+> For the security concerning, it is not recommended to use this application as a public service.
+> When deploying on a local host as a shared application, it is better to install this application in a container or VM, to prevent this application from accessing the Internet, and to limit the premissions of read, create, and delete loacal files and directories.
+
 ### 1. Install
 
 ```bash
