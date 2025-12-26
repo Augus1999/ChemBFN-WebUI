@@ -207,14 +207,22 @@ def _get_lora_info(prompt: str) -> Tuple[str, List[float], float]:
     if len(lora_info) == 1:
         lora_scaling = 1.0
     else:
-        lora_scaling = float(lora_info[1])
+        try:
+            lora_scaling = float(lora_info[1])
+        except ValueError as error:
+            print(f"{error}. Reset `lora_scaling` to 1.0.")
+            lora_scaling = 1.0
     if len(s) == 1:
         obj = []
     elif ":" not in s[1]:
         obj = []
     else:
         s2 = s[1].replace(":", "").replace("[", "").replace("]", "").split(",")
-        obj = [float(i) for i in s2]
+        try:
+            obj = [float(i) for i in s2]
+        except ValueError as error:
+            print(f"{error}. Reset `obj` to empty.")
+            obj = []
     return lora_name, obj, lora_scaling
 
 
@@ -251,11 +259,17 @@ def parse_prompt(
         pass
     if len(prompt_group) == 1:
         if not ("<" in prompt_group[0] and ">" in prompt_group[0]):
-            obj = [
-                float(i)
-                for i in prompt_group[0].replace("[", "").replace("]", "").split(",")
-            ]
-            info["objective"].append(obj)
+            try:
+                obj = [
+                    float(i)
+                    for i in prompt_group[0]
+                    .replace("[", "")
+                    .replace("]", "")
+                    .split(",")
+                ]
+                info["objective"].append(obj)
+            except ValueError as error:
+                print(f"{error}. Reset `obj` to empty.")
         else:
             lora_name, obj, lora_scaling = _get_lora_info(prompt_group[0])
             info["lora"].append(lora_name)
