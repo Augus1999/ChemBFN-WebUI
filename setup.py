@@ -4,7 +4,7 @@ import os
 import re
 from pathlib import Path
 from shutil import rmtree
-from setuptools import setup, find_packages
+from setuptools import setup  # , find_packages
 
 source_path = Path("chembfn_webui")
 
@@ -60,7 +60,7 @@ setup(
     include_package_data=True,
     author="Nianze A. Tao",
     author_email="tao-nianze@hiroshima-u.ac.jp",
-    packages=find_packages(),
+    # packages=find_packages(),
     python_requires=">=3.11",
     install_requires=[
         "bayesianflow_for_chem>=2.2.2",
