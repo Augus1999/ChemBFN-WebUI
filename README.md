@@ -1,6 +1,6 @@
-## ChemBFN WebUI: WebUI to generate and visualise molecules for ChemBFN method
+## Web-based UI visualisation tool for ChemBFN method
 
-[![PyPI](https://img.shields.io/pypi/v/chembfn-webui?color=ddb907)](https://pypi.org/project/chembfn-webui/)
+[![PyPI](https://img.shields.io/pypi/v/chembfn-webui?color=yellow)](https://pypi.org/project/chembfn-webui/)
 ![CI](https://github.com/Augus1999/ChemBFN-WebUI/actions/workflows/pytest.yml/badge.svg)
 
 <p align="left">
