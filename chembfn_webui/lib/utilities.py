@@ -253,7 +253,7 @@ def parse_prompt(
     if prompt is None:
         prompt = ""
     prompt_group = prompt.strip().replace("\n", "").split(";")
-    prompt_group = [i for i in prompt_group if i]
+    prompt_group = [i.strip() for i in prompt_group if i.strip()]
     info = {"lora": [], "objective": [], "lora_scaling": []}
     if not prompt_group:
         pass
@@ -302,7 +302,7 @@ def parse_exclude_token(tokens: Optional[str], vocab_keys: List[str]) -> List[st
     if tokens is None:
         tokens = ""
     tokens = tokens.strip().replace("\n", "").split(",")
-    tokens = [i for i in tokens if i]
+    tokens = [i.strip() for i in tokens if i.strip()]
     if not tokens:
         return tokens
     tokens = [i for i in vocab_keys if i not in tokens]
@@ -326,7 +326,7 @@ def parse_sar_control(sar_control: Optional[str]) -> List[bool]:
     if sar_control is None:
         sar_control = ""
     sar_flag = sar_control.strip().replace("\n", "").split(",")
-    sar_flag = [i for i in sar_flag if i]
+    sar_flag = [i.strip() for i in sar_flag if i.strip()]
     if not sar_flag:
         return [False]
     sar_flag = [i.lower() == "t" for i in sar_flag]
