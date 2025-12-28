@@ -1,14 +1,16 @@
 ## Web-based UI visualisation tool for ChemBFN method
 
-[![PyPI](https://img.shields.io/pypi/v/chembfn-webui?color=yellow)](https://pypi.org/project/chembfn-webui/)
+[![PyPI](https://img.shields.io/pypi/v/chembfn-webui?color=green)](https://pypi.org/project/chembfn-webui/)
 ![CI](https://github.com/Augus1999/ChemBFN-WebUI/actions/workflows/pytest.yml/badge.svg)
+![black](https://img.shields.io/badge/code%20style-black-black)
+[![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://stand-with-ukraine.pp.ua)
 
 <p align="left">
-<img src="image/screenshot_0.jpeg" alt="screenshot 0" width="400" height="auto">
-<img src="image/screenshot_1.jpeg" alt="screenshot 1" width="400" height="auto">
-<img src="image/screenshot_2.jpeg" alt="screenshot 2" width="400" height="auto">
-<img src="image/screenshot_3.jpeg" alt="screenshot 3" width="400" height="auto">
-<img src="image/screenshot_4.jpeg" alt="screenshot 4" width="400" height="auto">
+<img src="image/screenshot_0.jpeg" alt="screenshot 0" width="360" height="auto">
+<img src="image/screenshot_1.jpeg" alt="screenshot 1" width="360" height="auto">
+<img src="image/screenshot_2.jpeg" alt="screenshot 2" width="360" height="auto">
+<img src="image/screenshot_3.jpeg" alt="screenshot 3" width="360" height="auto">
+<img src="image/screenshot_4.jpeg" alt="screenshot 4" width="360" height="auto">
 </p>
 
 > [!IMPORTANT]

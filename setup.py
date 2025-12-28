@@ -23,11 +23,11 @@ with open("README.md", mode="r", encoding="utf-8") as fh:
 
 long_description = long_description.replace(
     r"""<p align="left">
-<img src="image/screenshot_0.jpeg" alt="screenshot 0" width="400" height="auto">
-<img src="image/screenshot_1.jpeg" alt="screenshot 1" width="400" height="auto">
-<img src="image/screenshot_2.jpeg" alt="screenshot 2" width="400" height="auto">
-<img src="image/screenshot_3.jpeg" alt="screenshot 3" width="400" height="auto">
-<img src="image/screenshot_4.jpeg" alt="screenshot 4" width="400" height="auto">
+<img src="image/screenshot_0.jpeg" alt="screenshot 0" width="360" height="auto">
+<img src="image/screenshot_1.jpeg" alt="screenshot 1" width="360" height="auto">
+<img src="image/screenshot_2.jpeg" alt="screenshot 2" width="360" height="auto">
+<img src="image/screenshot_3.jpeg" alt="screenshot 3" width="360" height="auto">
+<img src="image/screenshot_4.jpeg" alt="screenshot 4" width="360" height="auto">
 </p>""",
     "",
 )
