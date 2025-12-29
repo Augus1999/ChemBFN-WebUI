@@ -698,6 +698,9 @@ def main() -> None:
     :return:
     :rtype: None
     """
+    from rdkit import RDLogger
+
+    RDLogger.DisableLog("rdApp.*")  # type: ignore
     parser = argparse.ArgumentParser(
         description="A web-based visualisation tool for ChemBFN method.",
         epilog=f"ChemBFN WebUI {__version__}, developed in Hiroshima University by chemists for chemists. "
