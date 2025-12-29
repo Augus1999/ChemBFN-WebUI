@@ -63,7 +63,7 @@ setup(
     # packages=find_packages(),
     python_requires=">=3.11",
     install_requires=[
-        "bayesianflow_for_chem>=2.2.2",
+        "bayesianflow_for_chem>=2.4.0",
         "mol2chemfigPy3>=1.5.12",
         "gradio>=6.0.0,<7.0.0",
         "torch>=2.9.0",
