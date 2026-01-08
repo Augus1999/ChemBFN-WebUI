@@ -4,7 +4,7 @@ import os
 import re
 from pathlib import Path
 from shutil import rmtree
-from setuptools import setup  # , find_packages
+from setuptools import setup
 
 source_path = Path("chembfn_webui")
 
@@ -47,7 +47,16 @@ setup(
     long_description_content_type="text/markdown",
     license="AGPL-3.0-or-later",
     license_files=["LICEN[CS]E*"],
-    package_dir={"chembfn_webui": "chembfn_webui"},
+    package_dir={
+        "chembfn_webui": "chembfn_webui",
+        "chembfn_webui.bin": "chembfn_webui/bin",
+        "chembfn_webui.cache": "chembfn_webui/cache",
+        "chembfn_webui.lib": "chembfn_webui/lib",
+        "chembfn_webui.model.base_model": "chembfn_webui/model/base_model",
+        "chembfn_webui.model.lora": "chembfn_webui/model/lora",
+        "chembfn_webui.model.standalone_model": "chembfn_webui/model/standalone_model",
+        "chembfn_webui.model.vocab": "chembfn_webui/model/vocab",
+    },
     package_data={
         "chembfn_webui": [
             "./*/*/place_*.txt",
@@ -60,7 +69,16 @@ setup(
     include_package_data=True,
     author="Nianze A. Tao",
     author_email="tao-nianze@hiroshima-u.ac.jp",
-    # packages=find_packages(),
+    packages=[
+        "chembfn_webui",
+        "chembfn_webui.bin",
+        "chembfn_webui.cache",
+        "chembfn_webui.lib",
+        "chembfn_webui.model.base_model",
+        "chembfn_webui.model.lora",
+        "chembfn_webui.model.standalone_model",
+        "chembfn_webui.model.vocab",
+    ],
     python_requires=">=3.11",
     install_requires=[
         "bayesianflow_for_chem>=2.4.0",
