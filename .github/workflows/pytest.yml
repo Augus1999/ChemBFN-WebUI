@@ -6,10 +6,10 @@ name: CI
 on:
   push:
     branches: [ "main" ]
-    paths: [ "test/*.py", "chembfn_webui/*.py", "chembfn_webui/**/*.py" ]
+    paths: [ "test/*.py", "chembfn_webui/*.py", "chembfn_webui/**/*.py", "setup.py" ]
   pull_request:
     branches: [ "main" ]
-    paths: [ "test/*.py", "chembfn_webui/*.py", "chembfn_webui/**/*.py" ]
+    paths: [ "test/*.py", "chembfn_webui/*.py", "chembfn_webui/**/*.py", "setup.py" ]
 
 permissions:
   contents: read
