@@ -231,7 +231,10 @@ def _get_lora_info(prompt: str) -> Tuple[str, List[float], float]:
         try:
             lora_scaling = float(lora_info[1])
         except ValueError as error:
-            _warn(f"{error}. Reset `lora_scaling` to 1.0.", title="Warning in prompt")
+            _warn(
+                f"{error}. Reset `lora_scaling` to 1.0.".capitalize(),
+                title="Warning in prompt",
+            )
             lora_scaling = 1.0
     if len(s) == 1:
         obj = []
@@ -242,7 +245,10 @@ def _get_lora_info(prompt: str) -> Tuple[str, List[float], float]:
         try:
             obj = [float(i) for i in s2]
         except ValueError as error:
-            _warn(f"{error}. Reset `objective` to empty.", title="Warning in prompt")
+            _warn(
+                f"{error}. Reset `objective` to empty.".capitalize(),
+                title="Warning in prompt",
+            )
             obj = []
     return lora_name, obj, lora_scaling
 
@@ -290,7 +296,10 @@ def parse_prompt(
                 ]
                 info["objective"].append(obj)
             except ValueError as error:
-                _warn(f"{error}. Reset `obj` to empty.", title="Warning in prompt")
+                _warn(
+                    f"{error}. Reset `obj` to empty.".capitalize(),
+                    title="Warning in prompt",
+                )
         else:
             lora_name, obj, lora_scaling = _get_lora_info(prompt_group[0])
             info["lora"].append(lora_name)
@@ -378,7 +387,7 @@ def build_result_prep_fn(fn_string: Optional[str]) -> Callable[[str], str]:
             )
             return lambda x: x
         return fn
-    except ValueError as e:
+    except (ValueError, SyntaxError) as e:
         _warn(
             f"Invalid or unsafe expression: {e}. "
             "Returned identity as result preprocessing function.",

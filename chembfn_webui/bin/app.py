@@ -270,7 +270,7 @@ def run(
         ]
         chemfig_fn = lambda x: [mol2chemfig(decoder(i), "-r", inline=True) for i in x]
     else:
-        raise RuntimeError("Oops, may be something wrong with Gradio.")
+        raise RuntimeError("Oops, maybe something wrong with Gradio.")
     _method = "bfn" if method == "BFN" else f"ode:{temperature}"
     # ------- build model -------
     prompt_info = parse_prompt(prompt)
