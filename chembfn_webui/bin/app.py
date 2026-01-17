@@ -253,13 +253,13 @@ def run(
         trans_fn = lambda x: [i for i in x if (MolFromSmiles(i) and i)]
         img_fn = lambda x: [Draw.MolToImage(MolFromSmiles(i), (500, 500)) for i in x]
         chemfig_fn = lambda x: [mol2chemfig(i, "-r", inline=True) for i in x]
-    if token_name == "FASTA":
+    elif token_name == "FASTA":
         vocab_keys = FASTA_VOCAB_KEYS
         tokeniser = fasta2vec
         trans_fn = lambda x: [i for i in x if i]
         img_fn = lambda _: None  # senseless to provide dumb 2D images
         chemfig_fn = lambda _: [""]  # senseless to provide very long Chemfig code
-    if token_name == "SELFIES":
+    elif token_name == "SELFIES":
         vocab_data = load_vocab(vocabs[vocab_fn])
         vocab_keys = vocab_data["vocab_keys"]
         vocab_dict = vocab_data["vocab_dict"]
@@ -269,6 +269,8 @@ def run(
             Draw.MolToImage(MolFromSmiles(decoder(i)), (500, 500)) for i in x
         ]
         chemfig_fn = lambda x: [mol2chemfig(decoder(i), "-r", inline=True) for i in x]
+    else:
+        raise RuntimeError("Oops, may be something wrong with Gradio.")
     _method = "bfn" if method == "BFN" else f"ode:{temperature}"
     # ------- build model -------
     prompt_info = parse_prompt(prompt)
@@ -432,7 +434,8 @@ def run(
     with open(cache_dir / "results.csv", "w", encoding="utf-8", newline="") as rf:
         rf.write("\n".join(mols))
     _message.append(
-        f"{(n_mol := len(mols))} {'smaple' if n_mol in (0, 1) else 'samples'} generated and saved to cache that can be downloaded."
+        f"{(n_mol := len(mols))} {'smaple' if n_mol in (0, 1) else 'samples'} "
+        "generated and saved to cache that can be downloaded."
     )
     global _result_count
     _result_count = n_mol
@@ -703,7 +706,8 @@ def main() -> None:
     RDLogger.DisableLog("rdApp.*")  # type: ignore
     parser = argparse.ArgumentParser(
         description="A web-based visualisation tool for ChemBFN method.",
-        epilog=f"ChemBFN WebUI {__version__}, developed in Hiroshima University by chemists for chemists. "
+        epilog=f"ChemBFN WebUI {__version__}, "
+        "developed in Hiroshima University by chemists for chemists. "
         "Visit https://augus1999.github.io/bayesian-flow-network-for-chemistry/ for more details.",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )

@@ -9,6 +9,7 @@ import json
 from glob import glob
 from pathlib import Path
 from typing import Dict, List, Tuple, Union, Optional, Callable, Any
+import gradio as gr
 
 _model_path = Path(__file__).parent.parent / "model"
 if "CHEMBFN_WEBUI_MODEL_DIR" in os.environ:
@@ -38,6 +39,9 @@ class _SafeLambdaValidator(ast.NodeVisitor):
         super().visit(node)
 
     def visit_Lambda(self, node: ast.Lambda) -> Any:
+        """
+        Check lambda expression.
+        """
         if len(node.args.args) != 1:
             raise ValueError("Only one argument is accepted")
         if node.args.args[0].arg != "x":
@@ -45,14 +49,23 @@ class _SafeLambdaValidator(ast.NodeVisitor):
         self.visit(node.body)
 
     def visit_Name(self, node: ast.Name) -> None:
+        """
+        Check variable name.
+        """
         if node.id != "x":
             raise ValueError(f"Only variable 'x' is allowed, not '{node.id}'")
 
     def visit_arguments(self, node: ast.arguments) -> None:
+        """
+        Check number of arguments.
+        """
         if len(node.args) > 1:
             raise ValueError("Only one argument is allowed")
 
     def visit_Subscript(self, node: ast.Subscript) -> Any:
+        """
+        Check subscript usage.
+        """
         # Only allow x.split(...)[idx]
         if not isinstance(node.value, ast.Call):
             raise ValueError("Indexing should only be used after `split` method")
@@ -72,6 +85,9 @@ class _SafeLambdaValidator(ast.NodeVisitor):
         self.visit(idx)
 
     def visit_Attribute(self, node: ast.Attribute) -> Any:
+        """
+        Check attribute usage.
+        """
         # Only allow x.<method>
         if not isinstance(node.value, ast.Name):
             raise ValueError("No nested method calling is allowed")
@@ -82,6 +98,9 @@ class _SafeLambdaValidator(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Call(self, node: ast.Call) -> Any:
+        """
+        Check function/method calling.
+        """
         # only allow x.<method>(...)
         if not isinstance(node.func, ast.Attribute):
             raise ValueError("Only method calls on string objects are allowed")
@@ -94,6 +113,11 @@ class _SafeLambdaValidator(ast.NodeVisitor):
             raise ValueError("Keyword arguments are not allowed")
 
 
+def _warn(msg: str, **kargs: Union[str, float, bool, None]) -> None:
+    print(msg)
+    gr.Warning(msg, **kargs)
+
+
 def sys_info() -> str:
     """
     Get system information.
@@ -103,7 +127,6 @@ def sys_info() -> str:
     """
     import sys
     import torch
-    import gradio as gr
     import bayesianflow_for_chem as bfn
     from .version import __version__
 
@@ -159,13 +182,12 @@ def find_model() -> Dict[str, List[List[Union[str, int, List[str], Path]]]]:
         config_fn = Path(standalone_fn).parent / "config.json"
         if not os.path.exists(config_fn):
             continue
-        else:
-            with open(config_fn, "r", encoding="utf-8") as f:
-                config = json.load(f)
-            name = config["name"]
-            label = config["label"]
-            lmax = config["padding_length"]
-            standalone_models.append([name, Path(standalone_fn).parent, label, lmax])
+        with open(config_fn, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        name = config["name"]
+        label = config["label"]
+        lmax = config["padding_length"]
+        standalone_models.append([name, Path(standalone_fn).parent, label, lmax])
     models["standalone"] = standalone_models
     # find lora models
     lora_models = []
@@ -174,13 +196,12 @@ def find_model() -> Dict[str, List[List[Union[str, int, List[str], Path]]]]:
         config_fn = Path(lora_fn).parent / "config.json"
         if not os.path.exists(config_fn):
             continue
-        else:
-            with open(config_fn, "r", encoding="utf-8") as f:
-                config = json.load(f)
-            name = config["name"]
-            label = config["label"]
-            lmax = config["padding_length"]
-            lora_models.append([name, Path(lora_fn).parent, label, lmax])
+        with open(config_fn, "r", encoding="utf-8") as f:
+            config = json.load(f)
+        name = config["name"]
+        label = config["label"]
+        lmax = config["padding_length"]
+        lora_models.append([name, Path(lora_fn).parent, label, lmax])
     models["lora"] = lora_models
     return models
 
@@ -210,7 +231,7 @@ def _get_lora_info(prompt: str) -> Tuple[str, List[float], float]:
         try:
             lora_scaling = float(lora_info[1])
         except ValueError as error:
-            print(f"{error}. Reset `lora_scaling` to 1.0.")
+            _warn(f"{error}. Reset `lora_scaling` to 1.0.", title="Warning in prompt")
             lora_scaling = 1.0
     if len(s) == 1:
         obj = []
@@ -221,7 +242,7 @@ def _get_lora_info(prompt: str) -> Tuple[str, List[float], float]:
         try:
             obj = [float(i) for i in s2]
         except ValueError as error:
-            print(f"{error}. Reset `obj` to empty.")
+            _warn(f"{error}. Reset `objective` to empty.", title="Warning in prompt")
             obj = []
     return lora_name, obj, lora_scaling
 
@@ -269,7 +290,7 @@ def parse_prompt(
                 ]
                 info["objective"].append(obj)
             except ValueError as error:
-                print(f"{error}. Reset `obj` to empty.")
+                _warn(f"{error}. Reset `obj` to empty.", title="Warning in prompt")
         else:
             lora_name, obj, lora_scaling = _get_lora_info(prompt_group[0])
             info["lora"].append(lora_name)
@@ -350,14 +371,18 @@ def build_result_prep_fn(fn_string: Optional[str]) -> Callable[[str], str]:
         code = compile(tree, filename="<safe_lambda>", mode="eval")
         fn = eval(code, {"__builtins__": {}}, {})
         if not callable(fn):
-            print(
-                "Warning: Expression did not produce a function. Returned identity as result preprocessing function."
+            _warn(
+                "Warning: Expression did not produce a function. "
+                "Returned identity as result preprocessing function.",
+                title="Warning in result preprocessing function",
             )
             return lambda x: x
         return fn
-    except Exception as e:
-        print(
-            f"Invalid or unsafe expression: {e}. Returned identity as result preprocessing function."
+    except ValueError as e:
+        _warn(
+            f"Invalid or unsafe expression: {e}. "
+            "Returned identity as result preprocessing function.",
+            title="Warning in result preprocessing function",
         )
         return lambda x: x
 
