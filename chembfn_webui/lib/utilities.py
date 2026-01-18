@@ -131,10 +131,12 @@ def sys_info() -> str:
     from .version import __version__
 
     _python_version = ".".join([str(i) for i in sys.version_info[:3]])
+    _chembfn_webui_url = "https://github.com/Augus1999/ChemBFN-WebUI"
+    _chembfn_url = "https://github.com/Augus1999/bayesian-flow-network-for-chemistry"
     return f"""
-            version: <a href="https://github.com/Augus1999/ChemBFN-WebUI">{__version__}</a>
+            version: <a href="{_chembfn_webui_url}">{__version__}</a>
             &#x2000;•&#x2000;
-            bayesianflow-for-chem: <a href="https://github.com/Augus1999/bayesian-flow-network-for-chemistry">{bfn.__version__}</a>
+            bayesianflow-for-chem: <a href="{_chembfn_url}">{bfn.__version__}</a>
             &#x2000;•&#x2000;
             python: {_python_version}
             &#x2000;•&#x2000;
@@ -260,14 +262,31 @@ def parse_prompt(
     Parse propmt.
 
     :param prompt: prompt string: \n
-                   case I. empty string `""` --> `{"lora": [], "objective": [], "lora_scaling": []}`\n
-                   case II. one condition `"[a,b,c,...]"` --> `{"lora": [], "objective": [[a, b, c, ...]], "lora_scaling": []}`\n
-                   case III. one LoRA `"<name:A>"` --> `{"lora": [name], "objective": [], "lora_scaling": [A]}`\n
-                   case IV. one LoRA `"<name>"` --> `{"lora": [name], "objective": [], "lora_scaling": [1]}`\n
-                   case V. one LoRA with condition `"<name:A>:[a,b,...]"` --> `{"lora": [name], "objective": [[a, b, ...]], "lora_scaling": [A]}`\n
-                   case VI. one LoRA with condition `"<name>:[a,b,...]"` --> `{"lora": [name], "objective": [[a, b, ...]], "lora_scaling": [1]}`\n
-                   case VII. several LoRAs with conditions `"<name1:A1>:[a1,b1,...];<name2>:[a2,b2,c2,...]"` --> `{"lora": [name1, name2], "objective": [[a1, b1, ...], [a2, b2, c2, ...]], "lora_scaling": [A1, 1]}`\n
-                   case VIII. other cases --> `{"lora": [], "objective": [], "lora_scaling": []}`\n
+        case I. empty string:
+        `""` -->
+        `{"lora": [], "objective": [], "lora_scaling": []}`\n
+        case II. one condition:
+        `"[a,b,c,...]"` -->
+        `{"lora": [], "objective": [[a, b, c, ...]], "lora_scaling": []}`\n
+        case III. one LoRA:
+        `"<name:A>"` -->
+        `{"lora": [name], "objective": [], "lora_scaling": [A]}`\n
+        case IV. one LoRA:
+        `"<name>"` -->
+        `{"lora": [name], "objective": [], "lora_scaling": [1]}`\n
+        case V. one LoRA with condition:
+        `"<name:A>:[a,b,...]"` -->
+        `{"lora": [name], "objective": [[a, b, ...]], "lora_scaling": [A]}`\n
+        case VI. one LoRA with condition:
+        `"<name>:[a,b,...]"` -->
+        `{"lora": [name], "objective": [[a, b, ...]], "lora_scaling": [1]}`\n
+        case VII. several LoRAs with conditions:
+        `"<name1:A1>:[a1,b1,...];<name2>:[a2,b2,c2,...]"` -->
+        `{"lora": [name1, name2], "objective": [[a1, b1, ...],
+          [a2, b2, c2, ...]], "lora_scaling": [A1, 1]}`\n
+        case VIII. unrecognised prompt:
+        any other strings -->
+        `{"lora": [], "objective": [], "lora_scaling": []}`\n
     :type prompt: str | None
     :return: ```
             {
@@ -297,7 +316,7 @@ def parse_prompt(
                 info["objective"].append(obj)
             except ValueError as error:
                 _warn(
-                    f"{error}. Reset `obj` to empty.".capitalize(),
+                    f"{error}. Reset `objective` to empty.".capitalize(),
                     title="Warning in prompt",
                 )
         else:

@@ -47,7 +47,7 @@ vocabs = find_vocab()
 models = find_model()
 cache_dir = Path(__file__).parent.parent / "cache"
 favicon_dir = Path(__file__).parent / "favicon.png"
-_result_count = 0
+_RESULT_COUNT = 0
 
 HTML_STYLE = gr.InputHTMLAttributes(
     autocapitalize="off",
@@ -298,7 +298,7 @@ def run(
                     mlp = MLP.from_checkpoint(
                         standalone_model_dict[model_name] / "mlp.pt"
                     )
-                    y = torch.tensor([prompt_info["objective"]], dtype=torch.float32)
+                    y = torch.tensor([prompt_info["objective"][0]], dtype=torch.float32)
                     y = mlp.forward(y)
             else:
                 y = None
@@ -328,7 +328,7 @@ def run(
                 mlp = MLP.from_checkpoint(
                     lora_model_dict[prompt_info["lora"][0]] / "mlp.pt"
                 )
-                y = torch.tensor([prompt_info["objective"]], dtype=torch.float32)
+                y = torch.tensor([prompt_info["objective"][0]], dtype=torch.float32)
                 y = mlp.forward(y)
         else:
             y = None
@@ -341,7 +341,7 @@ def run(
         if jited == "on":
             bfn.compile()
     else:
-        lmax = max([lora_lmax_dict[i] for i in prompt_info["lora"]])
+        lmax = max(lora_lmax_dict[i] for i in prompt_info["lora"])
         if model_name in base_model_dict:
             base_model_dir = base_model_dict[model_name]
         else:
@@ -437,8 +437,8 @@ def run(
         f"{(n_mol := len(mols))} {'smaple' if n_mol in (0, 1) else 'samples'} "
         "generated and saved to cache that can be downloaded."
     )
-    global _result_count
-    _result_count = n_mol
+    global _RESULT_COUNT
+    _RESULT_COUNT = n_mol
     return (
         imgs,
         mols,
@@ -685,7 +685,7 @@ with gr.Blocks(title="ChemBFN WebUI", analytics_enabled=False) as app:
         api_visibility="private",
     )
     result.change(
-        fn=lambda x: gr.File(x, label="download", visible=_result_count > 0),
+        fn=lambda x: gr.File(x, label="download", visible=_RESULT_COUNT > 0),
         inputs=btn_download,
         outputs=btn_download,
         api_name="change_download_state",
