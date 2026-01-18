@@ -8,6 +8,9 @@ from setuptools import setup
 
 source_path = Path("chembfn_webui")
 
+with open(source_path / "cache/results.csv", mode="w", encoding="utf-8") as f:
+    f.write("c1ccccc1")
+
 with open(source_path / "lib/version.py", mode="r", encoding="utf-8") as f:
     lines = f.readlines()
 for line in lines:
