@@ -3,6 +3,7 @@
 """
 Define application behaviours.
 """
+import os
 import sys
 import argparse
 from pathlib import Path
@@ -40,6 +41,7 @@ from lib.utilities import (
     parse_exclude_token,
     parse_sar_control,
     build_result_prep_fn,
+    LoRAError,
 )
 from lib.version import __version__
 
@@ -294,6 +296,11 @@ def run(
                 if not standalone_label_dict[model_name]:
                     y = None
                     _message.append("Objective values ignored.")
+                elif not os.path.exists(standalone_model_dict[model_name] / "mlp.pt"):
+                    y = None
+                    _message.append(
+                        "Objective values ignored as no MLP model was found."
+                    )
                 else:
                     mlp = MLP.from_checkpoint(
                         standalone_model_dict[model_name] / "mlp.pt"
@@ -309,6 +316,8 @@ def run(
         if jited == "on":
             bfn.compile()
     elif len(prompt_info["lora"]) == 1:
+        if not (lm := prompt_info["lora"][0]) in lora_model_dict:
+            raise LoRAError(f"Cannot find LoRA model: <{lm}>")
         lmax = lora_lmax_dict[prompt_info["lora"][0]]
         if model_name in base_model_dict:
             bfn = ChemBFN.from_checkpoint(
@@ -324,6 +333,9 @@ def run(
             if not lora_label_dict[prompt_info["lora"][0]]:
                 y = None
                 _message.append("Objective values ignored.")
+            elif not os.path.exists(lora_model_dict[prompt_info["lora"][0]] / "mlp.pt"):
+                y = None
+                _message.append("Objective values ignored as no MLP model was found.")
             else:
                 mlp = MLP.from_checkpoint(
                     lora_model_dict[prompt_info["lora"][0]] / "mlp.pt"
@@ -341,6 +353,13 @@ def run(
         if jited == "on":
             bfn.compile()
     else:
+        for i in prompt_info["lora"]:
+            if not i in lora_model_dict:
+                raise LoRAError(f"Cannot find LoRA model: <{i}>")
+            if not os.path.exists(lora_model_dict[i] / "mlp.pt"):
+                raise LoRAError(
+                    f"Cannot find MLP model associated with LoRA model: <{i}>"
+                )
         lmax = max(lora_lmax_dict[i] for i in prompt_info["lora"])
         if model_name in base_model_dict:
             base_model_dir = base_model_dict[model_name]
@@ -720,8 +739,8 @@ def main() -> None:
     app.launch(
         share=args.public,
         footer_links=["api"],
-        allowed_paths=[cache_dir.absolute().__str__()],
-        favicon_path=favicon_dir.absolute().__str__(),
+        allowed_paths=[str(cache_dir.absolute())],
+        favicon_path=str(favicon_dir.absolute()),
         css=".custom_footer {text-align:center;bottom:0;}",
     )
 
