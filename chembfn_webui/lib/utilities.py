@@ -120,9 +120,10 @@ class _SafeLambdaValidator(ast.NodeVisitor):
 
 
 def _warn(msg: str, **kargs: Union[str, float, bool, None]) -> None:
-    # ↓ format HTML text
-    msg = f"{msg[0].upper()}{msg[1:]}".replace("<", "&lt").replace(">", "&gt")
+
+    msg = f"{msg[0].upper()}{msg[1:]}"
     print(msg)
+    msg = msg.replace("<", "&lt").replace(">", "&gt")  # format HTML text
     gr.Warning(msg, **kargs)
 
 
