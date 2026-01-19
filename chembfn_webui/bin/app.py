@@ -517,7 +517,10 @@ with gr.Blocks(title="ChemBFN WebUI", analytics_enabled=False) as app:
             with gr.Tab(label="result viewer"):
                 with gr.Tab(label="result"):
                     btn_download = gr.File(
-                        str(cache_dir / "results.csv"), label="download", visible=False
+                        str(cache_dir / "results.csv"),
+                        label="download",
+                        visible=False,
+                        interactive=False,
                     )
                     result = gr.Dataframe(
                         headers=["molecule"],
@@ -704,7 +707,9 @@ with gr.Blocks(title="ChemBFN WebUI", analytics_enabled=False) as app:
         api_visibility="private",
     )
     result.change(
-        fn=lambda x: gr.File(x, label="download", visible=_RESULT_COUNT > 0),
+        fn=lambda x: gr.File(
+            x, label="download", visible=_RESULT_COUNT > 0, interactive=False
+        ),
         inputs=btn_download,
         outputs=btn_download,
         api_name="change_download_state",
