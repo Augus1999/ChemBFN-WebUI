@@ -32,10 +32,23 @@ _ALLOWED_NODES = (
 )
 
 
-class LoRAError(RuntimeError):
+class LoRAError(gr.Error):
     """
     LoRA model error class.
     """
+
+    def __init__(
+        self,
+        message: str,
+        duration: Optional[float] = None,
+        visible: bool = True,
+        title: str = "LoRA Error",
+        print_exception: bool = True,
+    ) -> None:
+        super().__init__(message, duration, visible, title, print_exception)
+
+    def __str__(self) -> str:
+        return repr(self.message).replace("&lt", "<").replace("&gt", ">")
 
 
 class _SafeLambdaValidator(ast.NodeVisitor):

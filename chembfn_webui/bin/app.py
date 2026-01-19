@@ -10,8 +10,6 @@ from pathlib import Path
 from copy import deepcopy
 from functools import partial
 from typing import Tuple, List, Dict, Optional, Union, Literal
-
-sys.path.append(str(Path(__file__).parent.parent))
 from rdkit.Chem import Draw, MolFromSmiles  # type: ignore
 from mol2chemfigPy3 import mol2chemfig
 import gradio as gr
@@ -33,6 +31,8 @@ from bayesianflow_for_chem.tool import (
     adjust_lora_,
     quantise_model_,
 )
+
+sys.path.append(str(Path(__file__).parent.parent))
 from lib.utilities import (
     sys_info,
     find_model,
@@ -317,7 +317,7 @@ def run(
             bfn.compile()
     elif len(prompt_info["lora"]) == 1:
         if not (lm := prompt_info["lora"][0]) in lora_model_dict:
-            raise LoRAError(f"Cannot find LoRA model: <{lm}>")
+            raise LoRAError(f"Cannot find LoRA model: &lt{lm}&gt")
         lmax = lora_lmax_dict[prompt_info["lora"][0]]
         if model_name in base_model_dict:
             bfn = ChemBFN.from_checkpoint(
@@ -355,10 +355,10 @@ def run(
     else:
         for i in prompt_info["lora"]:
             if not i in lora_model_dict:
-                raise LoRAError(f"Cannot find LoRA model: <{i}>")
+                raise LoRAError(f"Cannot find LoRA model: &lt{i}&gt")
             if not os.path.exists(lora_model_dict[i] / "mlp.pt"):
                 raise LoRAError(
-                    f"Cannot find MLP model associated with LoRA model: <{i}>"
+                    f"Cannot find MLP model associated with LoRA model: &lt{i}&gt"
                 )
         lmax = max(lora_lmax_dict[i] for i in prompt_info["lora"])
         if model_name in base_model_dict:
