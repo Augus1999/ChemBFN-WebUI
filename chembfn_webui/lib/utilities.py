@@ -245,7 +245,8 @@ def _get_lora_info(prompt: str) -> Tuple[str, List[float], float]:
     :rtype: tuple
     """
     s = prompt.split(">")
-    s1 = s[0].replace("<", "")
+    # s1 = s[0].replace("<", "")  # old code for reference
+    s1 = s[0].split("<")[-1]
     lora_info = s1.split(":")
     lora_name = lora_info[0]
     if len(lora_info) == 1:
@@ -261,7 +262,9 @@ def _get_lora_info(prompt: str) -> Tuple[str, List[float], float]:
     elif ":" not in s[1]:
         obj = []
     else:
-        s2 = s[1].replace(":", "").replace("[", "").replace("]", "").split(",")
+        # old code for reference:
+        # s2 = s[1].replace(":", "").replace("[", "").replace("]", "").split(",")
+        s2 = s[1].replace(":", "").split("]")[0].split("[")[-1].split(",")
         try:
             obj = [float(i) for i in s2]
         except ValueError as error:
@@ -321,13 +324,15 @@ def parse_prompt(
     if len(prompt_group) == 1:
         if not ("<" in prompt_group[0] and ">" in prompt_group[0]):
             try:
-                obj = [
-                    float(i)
-                    for i in prompt_group[0]
-                    .replace("[", "")
-                    .replace("]", "")
-                    .split(",")
-                ]
+                # obj = [
+                #     float(i)
+                #     for i in prompt_group[0]
+                #     .replace("[", "")
+                #     .replace("]", "")
+                #     .split(",")
+                # ]  # old code for reference
+                obj = prompt_group[0].split("]")[0].split("[")[-1].split(",")
+                obj = [float(i) for i in obj]
                 info["objective"].append(obj)
             except ValueError as error:
                 _warn(

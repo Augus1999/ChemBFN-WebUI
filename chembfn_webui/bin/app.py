@@ -240,12 +240,19 @@ def run(
     """
     _message = []
     base_model_dict = dict(models["base"])
-    standalone_model_dict = dict([[i[0], i[1]] for i in models["standalone"]])
-    lora_model_dict = dict([[i[0], i[1]] for i in models["lora"]])
-    standalone_label_dict = dict([[i[0], i[2] != []] for i in models["standalone"]])
-    lora_label_dict = dict([[i[0], i[2] != []] for i in models["lora"]])
-    standalone_lmax_dict = dict([[i[0], i[3]] for i in models["standalone"]])
-    lora_lmax_dict = dict([[i[0], i[3]] for i in models["lora"]])
+    # old code for reference:
+    # standalone_model_dict = dict([[i[0], i[1]] for i in models["standalone"]])
+    # lora_model_dict = dict([[i[0], i[1]] for i in models["lora"]])
+    # standalone_label_dict = dict([[i[0], i[2] != []] for i in models["standalone"]])
+    # lora_label_dict = dict([[i[0], i[2] != []] for i in models["lora"]])
+    # standalone_lmax_dict = dict([[i[0], i[3]] for i in models["standalone"]])
+    # lora_lmax_dict = dict([[i[0], i[3]] for i in models["lora"]])
+    standalone_model_dict = {i[0]: i[1] for i in models["standalone"]}
+    lora_model_dict = {i[0]: i[1] for i in models["lora"]}
+    standalone_label_dict = {i[0]: i[2] != [] for i in models["standalone"]}
+    lora_label_dict = {i[0]: i[2] != [] for i in models["lora"]}
+    standalone_lmax_dict = {i[0]: i[3] for i in models["standalone"]}
+    lora_lmax_dict = {i[0]: i[3] for i in models["lora"]}
     # ------- build result preprocessing function -------
     _result_prep_fn = build_result_prep_fn(result_prep_fn)
     # ------- build tokeniser -------
