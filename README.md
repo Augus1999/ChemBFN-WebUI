@@ -1,9 +1,9 @@
 ## Web-based UI visualisation tool for ChemBFN method
 
-[![PyPI](https://img.shields.io/pypi/v/chembfn-webui?color=green)](https://pypi.org/project/chembfn-webui/)
-![CI](https://github.com/Augus1999/ChemBFN-WebUI/actions/workflows/pytest.yml/badge.svg)
+[![PyPI](https://img.shields.io/pypi/v/chembfn-webui?color=white)](https://pypi.org/project/chembfn-webui/)
 ![black](https://img.shields.io/badge/code%20style-black-black)
 [![Stand With Ukraine](https://raw.githubusercontent.com/vshymanskyy/StandWithUkraine/main/badges/StandWithUkraine.svg)](https://stand-with-ukraine.pp.ua)
+![CI](https://github.com/Augus1999/ChemBFN-WebUI/actions/workflows/pytest.yml/badge.svg)
 
 <p align="left">
 <img src="image/screenshot_0.jpeg" alt="screenshot 0" width="360" height="auto">
