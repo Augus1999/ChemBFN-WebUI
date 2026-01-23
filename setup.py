@@ -88,6 +88,7 @@ setup(
         "mol2chemfigPy3>=1.5.12",
         "gradio>=6.0.0,<7.0.0",
         "torch>=2.9.0",
+        "rdkit>=2025.3.5",
         "selfies>=2.2.0",
     ],
     project_urls={"Source": "https://github.com/Augus1999/ChemBFN-WebUI"},
