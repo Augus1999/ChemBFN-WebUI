@@ -92,14 +92,16 @@ $ chembfn --public
 
 III. use an external directory to hold the model files (Linux and MacOS)
 ```bash
-$ export CHEMBFN_WEBUI_MODEL_DIR={YOUR/MODEL/DIR}
-$ chembfn
+$ CHEMBFN_WEBUI_MODEL_DIR={YOUR/MODEL/DIR} chembfn
 ```
 
 IV. use an external directory to hold the model files (Windows)
-```bash
-$ set CHEMBFN_WEBUI_MODEL_DIR={YOUR/MODEL/DIR}
-$ chembfn
+```cmd
+# CMD ↓
+> set CHEMBFN_WEBUI_MODEL_DIR={YOUR/MODEL/DIR} & chembfn
+
+# PowerShell ↓
+> $env:CHEMBFN_WEBUI_MODEL_DIR="{YOUR/MODEL/DIR}" & chembfn
 ```
 
 V. use an external directory to hold the model files (Notebook, Google Colab)
