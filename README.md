@@ -96,7 +96,7 @@ $ CHEMBFN_WEBUI_MODEL_DIR={YOUR/MODEL/DIR} chembfn
 ```
 
 IV. use an external directory to hold the model files (Windows)
-```cmd
+```powershell
 # CMD ↓
 > set CHEMBFN_WEBUI_MODEL_DIR={YOUR/MODEL/DIR} & chembfn
 
@@ -110,6 +110,12 @@ import os
 os.environ["CHEMBFN_WEBUI_MODEL_DIR"] = "{YOUR/MODEL/DIR}"
 !chembfn --public
 ```
+
+VI. create an empty folder to hold the model files
+```bash
+$ chembfn --create_model_dir {YOUR/MODEL/DIR}
+```
+A structured folder `YOUR/MODEL/DIR/model` will be created.
 
 ### 4. Write the prompt
 
