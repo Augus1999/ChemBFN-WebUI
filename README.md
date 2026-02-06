@@ -97,10 +97,10 @@ $ CHEMBFN_WEBUI_MODEL_DIR={YOUR/MODEL/DIR} chembfn
 
 IV. use an external directory to hold the model files (Windows)
 ```powershell
-# CMD ↓
+# if you use CMD
 > set CHEMBFN_WEBUI_MODEL_DIR={YOUR/MODEL/DIR} & chembfn
 
-# PowerShell ↓
+# if you use PowerShell
 > $env:CHEMBFN_WEBUI_MODEL_DIR="{YOUR/MODEL/DIR}" & chembfn
 ```
 
