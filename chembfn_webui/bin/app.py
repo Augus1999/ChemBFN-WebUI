@@ -382,7 +382,7 @@ def run(
         weights = prompt_info["lora_scaling"]
         if len(sar_flag) == 1:
             sar_flag = [sar_flag[0] for _ in range(len(weights))]
-        bfn = EnsembleChemBFN(base_model_dir, lora_dir, mlps, weights)
+        bfn = EnsembleChemBFN(base_model_dir, lora_dir, mlps, weights, sar_flag)
         y = (
             [torch.tensor([i], dtype=torch.float32) for i in prompt_info["objective"]]
             if prompt_info["objective"]
