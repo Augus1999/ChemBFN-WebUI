@@ -43,6 +43,7 @@ from lib.utilities import (
     build_result_prep_fn,
     LoRAError,
 )
+from lib.structs import create_model_dir
 from lib.version import __version__
 
 vocabs = find_vocab()
@@ -745,8 +746,19 @@ def main() -> None:
     parser.add_argument(
         "-P", "--public", default=False, help="open to public", action="store_true"
     )
+    parser.add_argument(
+        "-M",
+        "--create_model_dir",
+        nargs=1,
+        type=lambda x: Path(x).resolve(),
+        metavar="USER_PROVIDED_DIRECTORY",
+        help="create an empty model folder under the USER_PROVIDED_DIRECTORY and exit",
+    )
     parser.add_argument("-V", "--version", action="version", version=__version__)
     args = parser.parse_args()
+    if (md := args.create_model_dir) is not None:
+        create_model_dir(md[0])
+        return
     print(f"This is ChemBFN WebUI version {__version__}")
     app.launch(
         share=args.public,
