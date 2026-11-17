@@ -314,7 +314,7 @@ def run(
                         standalone_model_dict[model_name] / "mlp.pt"
                     )
                     y = torch.tensor([prompt_info["objective"][0]], dtype=torch.float32)
-                    y = mlp.forward(y)
+                    y = mlp(y)
             else:
                 y = None
             _message.append(f"Sequence length set to {lmax} from model metadata.")
@@ -322,7 +322,7 @@ def run(
         if quantise == "on":
             quantise_model_(bfn)
         if jited == "on":
-            bfn.compile()
+            bfn.compile(dynamic=True)
     elif len(prompt_info["lora"]) == 1:
         if not (lm := prompt_info["lora"][0]) in lora_model_dict:
             raise LoRAError(f"Cannot find LoRA model: &lt{lm}&gt")
@@ -349,7 +349,7 @@ def run(
                     lora_model_dict[prompt_info["lora"][0]] / "mlp.pt"
                 )
                 y = torch.tensor([prompt_info["objective"][0]], dtype=torch.float32)
-                y = mlp.forward(y)
+                y = mlp(y)
         else:
             y = None
         if prompt_info["lora_scaling"][0] != 1.0:
@@ -359,7 +359,7 @@ def run(
         if quantise == "on":
             quantise_model_(bfn)
         if jited == "on":
-            bfn.compile()
+            bfn.compile(dynamic=True)
     else:
         for i in prompt_info["lora"]:
             if not i in lora_model_dict:
@@ -391,7 +391,7 @@ def run(
         if quantise == "on":
             bfn.quantise()
         if jited == "on":
-            bfn.compile()
+            bfn.compile(dynamic=True)
         _message.append(f"Sequence length set to {lmax} from model metadata.")
     result_prep_fn_ = lambda x: [_result_prep_fn(i) for i in x]
     # ------- inference -------
